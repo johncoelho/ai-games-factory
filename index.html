@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Games Factory</title>
+<meta name="description" content="AI Games Factory cria jogos com IA guiados pelo feedback dos jogadores. Conheça Naval Battle, batalha naval clássica e tática em teste para Android e iOS.">
+<meta name="theme-color" content="#08090C">
+
+<meta property="og:title" content="AI Games Factory">
+<meta property="og:description" content="Jogos criados só com IA, sem equipe — guiados pelo que o público mais gosta de jogar.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://johncoelho.github.io/ai-games-factory/">
+<link rel="canonical" href="https://johncoelho.github.io/ai-games-factory/">
+<meta property="og:image" content="https://johncoelho.github.io/naval-battle/media/feature-graphic-1024x500.png">
+<link rel="icon" href="https://johncoelho.github.io/naval-battle/media/icon-512.png" type="image/png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+  :root{
+    --bg:#08090C; --surface:#0F1318; --surface2:#161B22; --surface3:#1E2530;
+    --line:#262E3A; --lineSoft:#171C24;
+    --ink:#EEF1F6; --inkSoft:#A9B3C4; --muted:#5C6678;
+    --amber:#E6AC3F; --amberStrong:#FFC95C; --amberInk:#1E1402;
+    --cyan:#7AD1E0; --cyanSoft:rgba(122,209,224,.16);
+    --sans:'Chakra Petch',system-ui,-apple-system,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+    background-image:radial-gradient(1100px 640px at 50% -12%,#121722 0%,var(--bg) 60%);
+  }
+  a{color:inherit}
+  .wrap{max-width:980px;margin:0 auto;padding:0 20px}
+
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.24em;color:var(--muted);text-transform:uppercase;margin:0}
+  h1{font-size:clamp(38px,8vw,72px);line-height:.98;margin:14px 0 0;font-weight:700;letter-spacing:.01em}
+  h1 span{color:var(--amberStrong)}
+  h2{font-size:clamp(22px,3.6vw,30px);margin:0 0 8px;font-weight:700;letter-spacing:.01em;text-wrap:balance}
+  h3{font-size:18px;margin:0 0 6px;font-weight:600}
+  p{line-height:1.62;color:var(--inkSoft);margin:0 0 14px}
+  .lede{font-size:clamp(16px,2.1vw,19px);max-width:54ch}
+
+  header{position:sticky;top:0;z-index:20;backdrop-filter:blur(8px);
+         background:rgba(8,9,12,.82);border-bottom:1px solid var(--lineSoft)}
+  .bar{display:flex;align-items:center;justify-content:space-between;height:58px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.04em}
+  .navlinks{display:flex;gap:22px;font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase}
+  .navlinks a{color:var(--muted);text-decoration:none}
+  .navlinks a:hover{color:var(--amberStrong)}
+  @media (max-width:640px){ .navlinks{display:none} }
+
+  .hero{position:relative;overflow:hidden;border-bottom:1px solid var(--lineSoft)}
+  .nodes{position:absolute;inset:0;pointer-events:none;opacity:.7}
+  .nodes circle{fill:var(--cyan)}
+  .nodes line{stroke:var(--cyan);stroke-width:1}
+
+  .herobody{position:relative;padding:76px 0 64px}
+  @media (max-width:640px){ .herobody{padding:52px 0 44px} }
+
+  .cta{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .btn{display:inline-flex;align-items:center;gap:10px;text-decoration:none;font-weight:700;
+       letter-spacing:.06em;text-transform:uppercase;font-size:14.5px;padding:15px 22px;border:1px solid transparent}
+  .btn-primary{background:var(--amber);color:var(--amberInk)}
+  .btn-primary:hover{background:var(--amberStrong)}
+  .btn-ghost{border-color:var(--line);color:var(--ink)}
+  .btn-ghost:hover{border-color:var(--cyan);color:var(--cyan)}
+
+  section{padding:60px 0;border-bottom:1px solid var(--lineSoft)}
+  .sechead{max-width:58ch;margin-bottom:30px}
+
+  .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+  .card{border:1px solid var(--line);background:var(--surface);padding:22px}
+  .card .k{font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--cyan);text-transform:uppercase}
+  .card h3{margin-top:10px}
+  .card p{margin:0;font-size:14.5px}
+
+  .gamecard{display:flex;gap:18px;align-items:center;border:1px solid var(--line);
+            background:linear-gradient(180deg,var(--surface2),var(--surface));padding:22px;flex-wrap:wrap}
+  .gamecard .mark{width:64px;height:64px;flex:none}
+  .game-art{display:block;width:100%}
+  .game-art img{display:block;width:100%;height:auto;border:1px solid var(--line)}
+  .gamecard .body{flex:1;min-width:220px}
+  .tag{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+       border:1px solid var(--line);color:var(--inkSoft);padding:5px 9px;display:inline-block;margin:2px 6px 0 0}
+
+  .status{display:flex;flex-direction:column;gap:10px}
+  .row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--lineSoft);padding:10px 0;font-size:14.5px}
+  .row b{color:var(--ink);font-weight:600}
+  .row span{color:var(--muted);font-family:var(--mono);font-size:12px;letter-spacing:.08em}
+
+  footer{padding:40px 0 56px;color:var(--muted);font-size:13px}
+  footer a{color:var(--inkSoft)}
+  .foothead{font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;margin-bottom:10px}
+  .footgrid{display:grid;gap:26px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap bar">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 100 100" aria-hidden="true">
+        <path d="M50 4l8 14 15-4 -1 16 15 6-10 12 10 12-15 6 1 16-15-4-8 14-8-14-15 4 1-16-15-6 10-12-10-12 15-6-1-16 15 4z"
+              fill="none" stroke="#FFC95C" stroke-width="4"/>
+        <path d="M42 38l24 12-24 12z" fill="#FFC95C"/>
+      </svg>
+      AI GAMES FACTORY
+    </div>
+    <nav class="navlinks">
+      <a href="#sobre">Sobre</a>
+      <a href="#jogos">Jogos</a>
+      <a href="#contato">Contato</a>
+    </nav>
+  </div>
+</header>
+
+<div class="hero">
+  <svg class="nodes" viewBox="0 0 100 60" preserveAspectRatio="none" aria-hidden="true">
+    <line x1="6" y1="8" x2="14" y2="4"/><line x1="88" y1="6" x2="94" y2="11"/>
+    <line x1="4" y1="52" x2="10" y2="56"/><line x1="90" y1="50" x2="84" y2="55"/>
+    <circle cx="6" cy="8" r="0.6"/><circle cx="14" cy="4" r="0.6"/>
+    <circle cx="88" cy="6" r="0.6"/><circle cx="94" cy="11" r="0.6"/>
+    <circle cx="4" cy="52" r="0.6"/><circle cx="10" cy="56" r="0.6"/>
+    <circle cx="90" cy="50" r="0.6"/><circle cx="84" cy="55" r="0.6"/>
+  </svg>
+  <div class="wrap herobody">
+    <p class="eyebrow">Estúdio de jogos guiado por IA</p>
+    <h1>UMA FÁBRICA<br>DE <span>JOGOS</span></h1>
+    <p class="lede" style="margin-top:18px">
+      Jogos criados só com IA, sem equipe — guiados pelo que o público mais gosta de
+      jogar. Cada lançamento nasce de um gênero, testa a reação de quem joga e evolui
+      rápido, sem o peso de um estúdio tradicional por trás.
+    </p>
+    <div class="cta">
+      <a class="btn btn-primary" href="#jogos">Ver os jogos</a>
+      <a class="btn btn-ghost" href="mailto:joncqs@gmail.com">Falar com a fábrica</a>
+    </div>
+  </div>
+</div>
+
+<section id="sobre">
+  <div class="wrap">
+    <div class="sechead">
+      <h2>Como a fábrica funciona</h2>
+      <p>Não é um jogo com tema de IA — é uma forma diferente de fazer jogos. Cada
+         título é escolhido, desenhado e mantido com ferramentas de IA, e o catálogo
+         cresce por gênero, não por franquia.</p>
+    </div>
+    <div class="grid">
+      <div class="card"><div class="k">Sem time fixo</div><h3>Um estúdio, muitos jogos</h3>
+        <p>A produção não depende de contratar gente nova para cada gênero — o mesmo
+           processo se repete para tabuleiro, cartas, arcade e o que vier depois.</p></div>
+      <div class="card"><div class="k">Dados, não palpite</div><h3>O público decide o próximo passo</h3>
+        <p>Métricas de uso e feedback direto apontam o que continua, o que muda e o
+           que vira o próximo jogo da fábrica.</p></div>
+      <div class="card"><div class="k">Multiplataforma</div><h3>Android primeiro, iOS junto</h3>
+        <p>Naval Battle usa Kotlin Multiplatform: Android está em teste fechado na Play Store e iOS tem um beta para instalação manual.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="jogos">
+  <div class="wrap">
+    <div class="sechead">
+      <h2>Jogos da fábrica</h2>
+      <p>Naval Battle é o primeiro título: teste fechado no Android e beta no iPhone. O catálogo cresce a partir daqui.</p>
+    </div>
+    <div class="gamecard">
+      <a class="game-art" href="https://johncoelho.github.io/naval-battle/" aria-label="Conhecer Naval Battle">
+        <img src="https://johncoelho.github.io/naval-battle/media/feature-graphic-1024x500.png" width="1024" height="500" alt="Naval Battle: comando, radar e frota, com navio sobre o radar" loading="lazy">
+      </a>
+      <img class="mark" src="https://johncoelho.github.io/naval-battle/media/icon-512.png" width="64" height="64" alt="" loading="lazy">
+      <div class="body">
+        <h3>Naval Battle</h3>
+        <p style="margin-bottom:8px">Batalha naval clássica e tática: enfrente a IA, jogue no mesmo aparelho, em rede local ou online. Suba de patente, dispute o ranking e participe das temporadas.</p>
+        <span class="tag">Android · teste fechado</span><span class="tag">iOS · beta</span><span class="tag">Online · ranqueada</span>
+      </div>
+      <a class="btn btn-ghost" href="https://johncoelho.github.io/naval-battle/">Ver o jogo</a>
+    </div>
+  </div>
+</section>
+
+<section id="contato">
+  <div class="wrap">
+    <div class="sechead">
+      <h2>Contato</h2>
+      <p>Dúvidas, parcerias ou feedback sobre qualquer jogo da fábrica.</p>
+    </div>
+    <div class="status">
+      <div class="row"><b>E-mail</b><span><a href="mailto:joncqs@gmail.com">joncqs@gmail.com</a></span></div>
+      <div class="row"><b>Conta de desenvolvedor</b><span>AI Games Factory · Google Play</span></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap footgrid">
+    <div>
+      <div class="foothead">AI Games Factory</div>
+      <p style="margin:0">Jogos criados só com IA, sem equipe — guiados pelo que o
+         público mais gosta de jogar.</p>
+    </div>
+    <div>
+      <div class="foothead">Catálogo</div>
+      <p style="margin:0"><a href="https://johncoelho.github.io/naval-battle/">Naval Battle</a></p>
+      <p style="margin:8px 0 0"><a href="https://github.com/johncoelho/ai-games-factory">Repositório da fábrica</a></p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
