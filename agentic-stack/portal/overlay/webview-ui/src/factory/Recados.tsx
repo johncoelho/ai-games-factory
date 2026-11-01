@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { isOwner, me } from './session.js';
 import { sb } from './supabase.js';
@@ -71,6 +71,42 @@ export function Recados() {
   }, [carregar]);
 
   const naoLidos = todos.filter((m) => !m.read_at).length;
+  const [aviso, setAviso] = useState('');
+  const antes = useRef<number | null>(null);
+  const tituloBase = useRef(document.title);
+
+  // Aviso ao CEO: quando o numero de nao lidos sobe, mostra um aviso, toca um bipe e marca o titulo da aba.
+  useEffect(() => {
+    if (!dono) return;
+    document.title = (naoLidos ? '(' + naoLidos + ') ' : '') + tituloBase.current;
+    const prev = antes.current;
+    antes.current = naoLidos;
+    if (prev === null || naoLidos <= prev) return;
+    const novo = todos.find((m) => !m.read_at);
+    setAviso('Novo recado' + (novo ? ' de ' + novo.visitor_name : ''));
+    setTimeout(() => setAviso(''), 8000);
+    try {
+      const ctx = new AudioContext();
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.frequency.value = 880;
+      g.gain.value = 0.08;
+      o.connect(g).connect(ctx.destination);
+      o.start();
+      o.stop(ctx.currentTime + 0.18);
+    } catch {
+      /* sem audio */
+    }
+    try {
+      if ('Notification' in window && Notification.permission === 'granted' && document.hidden) new Notification('AI Games Factory', { body: novo ? novo.visitor_name + ': ' + novo.body.slice(0, 80) : 'Novo recado' });
+    } catch {
+      /* sem notificacao */
+    }
+  }, [dono, naoLidos, todos]);
+
+  useEffect(() => {
+    if (dono && 'Notification' in window && Notification.permission === 'default') void Notification.requestPermission().catch(() => undefined);
+  }, [dono]);
   const novasRespostas = meus.filter((m) => m.reply && !vistasIds.includes(m.id));
 
   const abrir = () => {
@@ -123,6 +159,11 @@ export function Recados() {
       <button style={{ ...discreto, ...(naoLidos || novasRespostas.length ? { borderColor: '#FFC95C', color: '#FFC95C' } : {}) }} onClick={abrir}>
         {rotulo}
       </button>
+      {aviso && !aberto && (
+        <div style={{ position: 'fixed', left: 16, top: 190, zIndex: 40, background: '#0F1318', border: '1px solid #FFC95C', color: '#FFC95C', font: '700 13px ' + MONO, padding: '10px 14px', cursor: 'pointer' }} onClick={() => { setAviso(''); abrir(); }}>
+          ✉ {aviso} — clique para abrir
+        </div>
+      )}
       {aberto && (
         <div style={{ position: 'fixed', left: 16, top: 190, zIndex: 40, ...caixa }}>
           {dono ? (

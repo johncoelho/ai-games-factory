@@ -78,7 +78,8 @@ export function buildLayout() {
   const team = (i, slug, label) => {
     const x = colX(i), y = TOP;
     const p = (type, dx, dy) => add(type, x + dx, y + dy);
-    p('HANGING_PLANT', 0, -2); p('DOUBLE_BOOKSHELF', 1, -2); p('CLOCK', 4, -2); p('DOUBLE_BOOKSHELF', 6, -2); p('HANGING_PLANT', 8, -2);
+    p('HANGING_PLANT', 0, -2); p('DOUBLE_BOOKSHELF', 1, -2); p('GOLD_FRAME_TEAL', 3, -2); p('CLOCK', 4, -2); p('GOLD_FRAME_TEAL', 5, -2); p('DOUBLE_BOOKSHELF', 6, -2); p('HANGING_PLANT', 8, -2);
+    p('CACTUS', 8, 3); p('PLANT', 8, 8); p('CACTUS', 4, 9);
     p('DESK_FRONT', 1, 1); p('DESK_FRONT', 5, 1); p('PC_FRONT_OFF', 2, 1); p('PC_FRONT_OFF', 6, 1);
     p('CUSHIONED_BENCH', 2, 3); p('CUSHIONED_BENCH', 6, 3);
     p('TABLE_FRONT', 3, 5);
@@ -99,6 +100,8 @@ export function buildLayout() {
     p('COFFEE_TABLE', 4, 3); p('SOFA_SIDE', 3, 3); p('SOFA_FRONT', 4, 2); p('SOFA_BACK', 4, 5); p('SOFA_SIDE:left', 6, 3); p('COFFEE', 4, 4);
     p('WOODEN_BENCH', 1, 1); p('WOODEN_BENCH', 7, 1); p('WOODEN_BENCH', 1, 8); p('WOODEN_BENCH', 7, 8);
     p('POT', 0, 9); p('POT', 8, 9);
+    p('CACTUS', 0, 5); p('CACTUS', 8, 5);
+    if (row !== BOT) p('GOLD_FRAME_TEAL', 5, -2);
     area(label, '#7AD1E0', x + 1, y, 7);
     rooms.push({ id, type: 'lounge', label, x, y, w: 9, h: H });
   };
@@ -119,7 +122,7 @@ export function buildLayout() {
     p('PLANT_2', 0, -1); p('SMALL_PAINTING', 1, -2); p('CLOCK', 2, -2); p('LARGE_PAINTING', 6, -2); p('PLANT', 8, -1);
     p('DESK_FRONT', 3, 3); p('PC_FRONT_OFF', 4, 3);
     p('SOFA_FRONT', 0, 7); p('SOFA_FRONT', 7, 7); p('COFFEE_TABLE', 0, 5); p('LARGE_PLANT', 7, 4);
-    p('POT', 8, 9); p('POT', 0, 9);
+    p('POT', 8, 9); p('POT', 0, 9); p('CACTUS', 8, 3); p('CACTUS', 0, 3);
     area('RECEPÇÃO', '#E6AC3F', x + 1, y + 1, 7);
     rooms.push({ id: 'recepcao', type: 'reception', label: 'RECEPÇÃO', x, y, w: 9, h: H, spawn: { col: x + 4, row: y + 9 } });
   }
