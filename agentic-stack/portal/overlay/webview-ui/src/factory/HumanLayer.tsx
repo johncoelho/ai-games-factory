@@ -98,6 +98,75 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
     return () => window.removeEventListener('keydown', onKey);
   }, [officeState]);
 
+  // presenca: CEO e visitantes online se enxergam (canal publico do Supabase Realtime). Sem o CEO online, um avatar dele fica sentado na sala.
+  useEffect(() => {
+    type P = { name: string; palette: number; kind: 'ceo' | 'visitor'; col: number; row: number };
+    const meuKey = Math.random().toString(36).slice(2);
+    const canal = sb.channel('factory-presence', { config: { presence: { key: meuKey } } });
+    const remotos = new Map<string, number>();
+    let seq = 91000;
+    let npc: number | null = null;
+    const seatAt = (col: number, row: number): string | null => {
+      for (const [sid, st] of officeState.seats) if (st.seatCol === col && st.seatRow === row) return sid;
+      return null;
+    };
+    const sync = () => {
+      const estado = canal.presenceState() as unknown as Record<string, P[]>;
+      const vistos = new Set<string>();
+      let ceoOnline = isOwner();
+      for (const [k, arr] of Object.entries(estado)) {
+        const p = arr[arr.length - 1];
+        if (k === meuKey || !p) continue;
+        vistos.add(k);
+        if (p.kind === 'ceo') ceoOnline = true;
+        const cid = remotos.get(k);
+        if (cid === undefined) {
+          const novo = seq++;
+          remotos.set(k, novo);
+          officeState.addHuman(novo, p.palette, 0, seatAt(p.col, p.row), p.name, p.kind, p.col, p.row);
+        } else {
+          officeState.humanGoTo(cid, p.col, p.row);
+        }
+      }
+      for (const [k, cid] of remotos) {
+        if (vistos.has(k)) continue;
+        officeState.removeAgent(cid);
+        remotos.delete(k);
+      }
+      const sala = ROOMS.find((r) => r.type === 'ceo')?.seat;
+      if (!ceoOnline && npc === null && sala) {
+        npc = seq++;
+        officeState.addHuman(npc, 1, 0, seatAt(sala.col, sala.row), 'John', 'ceo', sala.col, sala.row);
+      } else if (ceoOnline && npc !== null) {
+        officeState.removeAgent(npc);
+        npc = null;
+      }
+    };
+    let ultimo = '';
+    let t: ReturnType<typeof setInterval> | null = null;
+    const iniciar = setInterval(() => {
+      if (!officeState.characters.has(MY_ID)) return;
+      clearInterval(iniciar);
+      canal.on('presence', { event: 'sync' }, sync).subscribe((st) => {
+        if (st !== 'SUBSCRIBED') return;
+        sync();
+        t = setInterval(() => {
+          const eu = officeState.characters.get(MY_ID);
+          if (!eu) return;
+          const chave = eu.tileCol + ',' + eu.tileRow;
+          if (chave === ultimo) return;
+          ultimo = chave;
+          void canal.track({ name: me.name, palette: me.palette, kind: isOwner() ? 'ceo' : 'visitor', col: eu.tileCol, row: eu.tileRow });
+        }, 600);
+      });
+    }, 300);
+    return () => {
+      clearInterval(iniciar);
+      if (t) clearInterval(t);
+      void sb.removeChannel(canal);
+    };
+  }, [officeState]);
+
   // quem esta por perto (ate 3 tiles) e o que esta fazendo
   useEffect(() => {
     const t = setInterval(() => {

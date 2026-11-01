@@ -535,6 +535,22 @@ import { ToolOverlay } from './office/components/ToolOverlay.js';`,
         <BottomToolbar`],
 ]);
 
+// 4h) zoom fracionado sem quadriculado: cada pixel do sprite cobre as bordas arredondadas (sem frestas entre eles)
+patch("sprites/spriteCache.ts", [
+  [
+    `  canvas.width = cols * zoom;
+  canvas.height = rows * zoom;`,
+    `  canvas.width = Math.round(cols * zoom);
+  canvas.height = Math.round(rows * zoom);`,
+  ],
+  [
+    `      ctx.fillRect(c * zoom, r * zoom, zoom, zoom);`,
+    `      const x0 = Math.round(c * zoom);
+      const y0 = Math.round(r * zoom);
+      ctx.fillRect(x0, y0, Math.round((c + 1) * zoom) - x0, Math.round((r + 1) * zoom) - y0);`,
+  ],
+]);
+
 // 5) layout: mapa grande gerado por layout.mjs (10 salas) + lista de salas para escolher mesa e sofa de cada agente
 const layoutFile = path.join(root, "webview-ui/public/assets/default-layout-1.json");
 const { layout, rooms, hall } = buildLayout();
