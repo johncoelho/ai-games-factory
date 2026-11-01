@@ -127,11 +127,11 @@ export function buildLayout() {
   {
     const x = colX(2), y = BOT;
     const p = (type, dx, dy) => add(type, x + dx, y + dy);
-    p('DOUBLE_BOOKSHELF', 0, -2); p('CLOCK', 2, -2); p('WHITEBOARD', 6, -2); p('PLANT', 8, -1);
+    p('DOUBLE_BOOKSHELF', 0, -2); p('MIRROR', 2, -2); p('GOLD_FRAME_GREEN', 6, -2); p('GOLD_FRAME_ORANGE', 7, -2); p('PLANT', 8, -1);
     p('DESK_FRONT', 3, 2); p('PC_FRONT_OFF', 4, 2); p('CUSHIONED_CHAIR_BACK', 4, 4);
     p('LARGE_PLANT', 0, 1); p('LARGE_PLANT', 7, 1);
     p('SOFA_BACK', 1, 8); p('SOFA_BACK', 6, 8); p('COFFEE_TABLE', 4, 7); p('COFFEE', 4, 8);
-    p('POT', 8, 6);
+    p('POT', 8, 6); p('GRAND_PIANO', 6, 4); p('CANDELABRA', 2, 3); p('CANDELABRA', 6, 2);
     area('CEO', '#FFC95C', x + 1, y + 6, 7);
     rooms.push({ id: 'ceo', type: 'ceo', label: 'CEO', x, y, w: 9, h: H, seat: { col: x + 4, row: y + 4 } });
   }
