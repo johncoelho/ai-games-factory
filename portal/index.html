@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Fábrica ao vivo</title>
+<style>
+:root{--bg:#08090C;--s:#0F1318;--line:#262E3A;--ink:#EEF1F6;--soft:#A9B3C4;--mute:#5C6678;--amber:#E6AC3F;--amber2:#FFC95C;--cyan:#7AD1E0;--ok:#6FCF97;
+--sans:'Chakra Petch',system-ui,-apple-system,sans-serif;--mono:'JetBrains Mono',ui-monospace,Consolas,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(1100px 640px at 50% -12%,#121722 0%,var(--bg) 60%);color:var(--ink);font-family:var(--sans);min-height:100vh}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line)}
+h1{font-size:18px;margin:0;letter-spacing:.06em}h1 span{color:var(--amber2)}
+.eyebrow{font:11px var(--mono);letter-spacing:.2em;color:var(--mute);text-transform:uppercase}
+.pill{font:11px var(--mono);padding:4px 10px;border:1px solid var(--line);color:var(--soft);background:none;cursor:default}
+.pill.on{color:var(--cyan);border-color:var(--cyan)}
+button.pill{cursor:pointer}
+main{padding:20px;max-width:1180px;margin:0 auto}
+.stats{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:8px}
+.stat{background:var(--s);border:1px solid var(--line);padding:14px}
+.stat b{display:block;font:600 24px var(--mono);color:var(--amber2)}
+.stat i{font:10px var(--mono);letter-spacing:.16em;color:var(--mute);text-transform:uppercase;font-style:normal}
+h2{font:11px var(--mono);letter-spacing:.2em;color:var(--mute);text-transform:uppercase;margin:22px 0 10px}
+.cards{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+.card{background:var(--s);border:1px solid var(--line);padding:14px;transition:border-color .2s}
+.card.work{border-color:var(--cyan);box-shadow:0 0 0 1px rgba(122,209,224,.15)}
+.card.wait{border-color:var(--amber)}
+.top{display:flex;justify-content:space-between;align-items:center}
+.name{font-weight:700}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--mute)}
+.work .dot{background:var(--cyan);animation:p 1s infinite}
+.wait .dot{background:var(--amber)}
+.done .dot{background:var(--ok)}
+@keyframes p{50%{opacity:.35}}
+.game{font:10px var(--mono);letter-spacing:.14em;color:var(--mute);text-transform:uppercase}
+.now{margin-top:10px;font:12px var(--mono);color:var(--soft);min-height:32px;word-break:break-all}
+.meta{margin-top:8px;font:11px var(--mono);color:var(--mute);display:flex;justify-content:space-between}
+table{width:100%;border-collapse:collapse;font:12px var(--mono)}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--mute);font-weight:500;letter-spacing:.12em;text-transform:uppercase;font-size:10px}
+td.t{color:var(--soft);overflow:hidden;text-overflow:ellipsis;max-width:380px}
+.wrap{overflow-x:auto;background:var(--s);border:1px solid var(--line)}
+.empty{color:var(--mute);font:12px var(--mono);padding:18px}
+#login{max-width:380px;margin:12vh auto;padding:0 20px}
+#login form{background:var(--s);border:1px solid var(--line);padding:20px;display:grid;gap:12px}
+#login input{background:var(--bg);border:1px solid var(--line);color:var(--ink);font:14px var(--mono);padding:10px}
+#login button{background:var(--amber);color:#08090C;border:0;font:700 13px var(--sans);letter-spacing:.08em;padding:11px;cursor:pointer}
+#login p{font:12px var(--mono);color:var(--soft);margin:0}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <div><div class="eyebrow">AI Games Factory</div><h1>FÁBRICA <span>AO VIVO</span></h1></div>
+  <div><span class="pill" id="st">conectando…</span> <button class="pill" id="out" hidden>sair</button></div>
+</header>
+
+<section id="login" hidden>
+  <form id="f">
+    <div class="eyebrow">Acesso restrito</div>
+    <input id="email" type="email" placeholder="seu e-mail" autocomplete="email" required>
+    <button>RECEBER LINK DE ACESSO</button>
+    <p id="msg"></p>
+  </form>
+</section>
+
+<main id="app" hidden>
+  <div class="stats">
+    <div class="stat"><b id="n-ag">0</b><i>agentes</i></div>
+    <div class="stat"><b id="n-work">0</b><i>trabalhando</i></div>
+    <div class="stat"><b id="n-ev">0</b><i>eventos</i></div>
+    <div class="stat"><b id="n-cost">$0.00</b><i>custo das sessões</i></div>
+  </div>
+  <h2>Squad</h2>
+  <div class="cards" id="cards"><div class="empty">Sem agentes ainda. Rode um agente com o hook instalado.</div></div>
+  <h2>Eventos</h2>
+  <div class="wrap"><table><thead><tr><th>hora</th><th>jogo</th><th>agente</th><th>evento</th><th>alvo</th><th>custo</th></tr></thead><tbody id="rows"></tbody></table></div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+// Chave publicavel: feita para ficar no navegador. O acesso aos dados e controlado por login + RLS no banco.
+const SB_URL = "https://lwaoxnjajxljxusxujku.supabase.co";
+const SB_KEY = "sb_publishable_DAh62u94eXqLOLJCe0mPXA_nykm2Xhd";
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+const VERB = { Read: "lendo", Grep: "buscando", Glob: "listando", Edit: "editando", Write: "escrevendo", Bash: "rodando comando", Task: "delegando", Agent: "delegando", WebFetch: "pesquisando", WebSearch: "pesquisando" };
+const ag = new Map(), sessCost = new Map();
+let n = 0, channel = null;
+
+function apply(e) {
+  n++;
+  const k = e.game + "|" + e.agent;
+  const a = ag.get(k) || { game: e.game, agent: e.agent, state: "idle", now: "", last: e.ts, tools: 0, cost: null };
+  a.last = e.ts;
+  if (e.event === "PreToolUse") { a.state = "work"; a.now = (VERB[e.tool] || e.tool) + (e.target ? " " + e.target : ""); a.tools++; }
+  else if (e.event === "PostToolUse") { a.state = "work"; }
+  else if (e.event === "Notification") { a.state = "wait"; a.now = "aguardando você"; }
+  else if (["Stop", "SubagentStop", "SessionEnd"].includes(e.event)) {
+    a.state = "done"; a.now = "terminou";
+    if (e.cost_usd != null) { a.cost = Number(e.cost_usd); sessCost.set(e.session_id + "|" + (e.agent_id || ""), Number(e.cost_usd)); }
+  }
+  else if (["SessionStart", "SubagentStart", "UserPromptSubmit"].includes(e.event)) { a.state = "work"; a.now = e.event === "SubagentStart" ? "entrou em campo" : "começou"; }
+  ag.set(k, a);
+}
+
+function row(e) {
+  const tr = document.createElement("tr");
+  tr.innerHTML = `<td>${new Date(e.ts).toLocaleTimeString("pt-BR")}</td><td>${esc(e.game)}</td><td>${esc(e.agent)}</td><td>${esc(e.event)}${e.tool ? " · " + esc(e.tool) : ""}</td><td class="t">${esc(e.target)}</td><td>${e.cost_usd != null ? "$" + Number(e.cost_usd).toFixed(3) : ""}</td>`;
+  const b = $("rows");
+  b.prepend(tr);
+  while (b.children.length > 120) b.lastChild.remove();
+}
+
+function draw() {
+  const c = $("cards");
+  const list = [...ag.values()].sort((x, y) => y.last.localeCompare(x.last));
+  if (list.length) c.innerHTML = "";
+  for (const a of list) {
+    const d = document.createElement("div");
+    d.className = "card " + a.state;
+    d.innerHTML = `<div class="top"><span class="name">${esc(a.agent)}</span><span class="dot"></span></div><div class="game">${esc(a.game)}</div><div class="now">${esc(a.now)}</div><div class="meta"><span>${a.tools} ferramentas</span><span>${a.cost != null ? "$" + a.cost.toFixed(3) : ""}</span></div>`;
+    c.append(d);
+  }
+  $("n-ag").textContent = list.length;
+  $("n-work").textContent = list.filter((a) => a.state === "work").length;
+  $("n-ev").textContent = n;
+  $("n-cost").textContent = "$" + [...sessCost.values()].reduce((s, x) => s + x, 0).toFixed(2);
+}
+
+function status(txt, on) { $("st").textContent = txt; $("st").className = "pill" + (on ? " on" : ""); }
+
+async function start() {
+  $("login").hidden = true; $("app").hidden = false; $("out").hidden = false;
+  const { data, error } = await sb.from("factory_events").select("*").order("ts", { ascending: false }).limit(300);
+  if (error) { status("sem permissão", false); return; }
+  data.reverse().forEach((e) => { apply(e); row(e); });
+  draw();
+  channel = sb.channel("factory-events")
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "factory_events" }, (p) => { apply(p.new); row(p.new); draw(); })
+    .subscribe((s) => status(s === "SUBSCRIBED" ? "ao vivo" : "reconectando…", s === "SUBSCRIBED"));
+}
+
+function showLogin() {
+  $("app").hidden = true; $("out").hidden = true; $("login").hidden = false; status("desconectado", false);
+}
+
+$("f").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  $("msg").textContent = "Enviando…";
+  const { error } = await sb.auth.signInWithOtp({
+    email: $("email").value.trim(),
+    options: { shouldCreateUser: true, emailRedirectTo: location.origin + location.pathname },
+  });
+  $("msg").textContent = error ? "Não foi possível enviar o link." : "Link enviado. Abra o e-mail neste navegador.";
+});
+$("out").addEventListener("click", async () => { await sb.auth.signOut(); location.reload(); });
+
+sb.auth.getSession().then(({ data }) => (data.session ? start() : showLogin()));
+sb.auth.onAuthStateChange((evt, session) => { if (evt === "SIGNED_IN" && session && $("app").hidden) start(); });
+</script>
+</body>
+</html>
