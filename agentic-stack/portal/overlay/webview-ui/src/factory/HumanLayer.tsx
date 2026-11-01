@@ -105,7 +105,7 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
 
   // presenca: CEO e visitantes online se enxergam (canal publico do Supabase Realtime). Sem o CEO online, um avatar dele fica sentado na sala.
   useEffect(() => {
-    type P = { name: string; palette: number; kind: 'ceo' | 'visitor'; col: number; row: number; mic?: boolean };
+    type P = { name: string; palette: number; kind: 'ceo' | 'visitor'; col: number; row: number; mic?: boolean; t?: number };
     const meuKey = Math.random().toString(36).slice(2);
     const canal = sb.channel('factory-presence', { config: { presence: { key: meuKey } } });
     const remotos = new Map<string, number>();
@@ -122,9 +122,20 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
       const estado = canal.presenceState() as unknown as Record<string, P[]>;
       const vistos = new Set<string>();
       let ceoOnline = isOwner();
+      // O CEO e uma pessoa so: com varias janelas dele abertas, vale a que mexeu por ultimo (e quem e o CEO nao enxerga as outras janelas).
+      let ceoKey: string | null = null;
+      let ceoT = -1;
+      for (const [k, arr] of Object.entries(estado)) {
+        const p = arr[arr.length - 1];
+        if (k !== meuKey && p?.kind === 'ceo' && (p.t ?? 0) > ceoT) {
+          ceoT = p.t ?? 0;
+          ceoKey = k;
+        }
+      }
       for (const [k, arr] of Object.entries(estado)) {
         const p = arr[arr.length - 1];
         if (k === meuKey || !p) continue;
+        if (p.kind === 'ceo' && (isOwner() || k !== ceoKey)) continue;
         vistos.add(k);
         ultimosP.set(k, p);
         if (p.kind === 'ceo') ceoOnline = true;
@@ -180,7 +191,7 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
           const chave = eu.tileCol + ',' + eu.tileRow + ',' + voz.ligado;
           if (chave === ultimo) return;
           ultimo = chave;
-          void canal.track({ name: me.name, palette: me.palette, kind: isOwner() ? 'ceo' : 'visitor', col: eu.tileCol, row: eu.tileRow, mic: voz.ligado });
+          void canal.track({ name: me.name, palette: me.palette, kind: isOwner() ? 'ceo' : 'visitor', col: eu.tileCol, row: eu.tileRow, mic: voz.ligado, t: Date.now() });
         }, 600);
         // voz: quem esta a ate 4 tiles (e ainda ate 6 se ja conectado) e tambem esta com o microfone ligado
         v = setInterval(() => {
