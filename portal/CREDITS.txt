@@ -1,0 +1,2 @@
+Escritorio visual: Pixel Agents (https://github.com/pablodelucca/pixel-agents), licenca MIT (LICENSE-pixel-agents.txt).
+Personagens baseados em Metro City, de JIK-A-4 (https://jik-a-4.itch.io/metrocity-free-topdown-character-pack).
