@@ -111,6 +111,7 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
     const remotos = new Map<string, number>();
     const ultimosP = new Map<string, P>();
     const voz = new Voz(meuKey, (sinal) => void canal.send({ type: 'broadcast', event: 'rtc', payload: sinal }));
+    (window as unknown as { __factoryVoz?: Voz }).__factoryVoz = voz;
     let seq = 91000;
     let npc: number | null = null;
     const seatAt = (col: number, row: number): string | null => {
