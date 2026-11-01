@@ -1,15 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { CHARACTER_SITTING_OFFSET_PX, TOOL_OVERLAY_VERTICAL_OFFSET } from '../constants.js';
 import type { OfficeState } from '../office/engine/officeState.js';
 import { overlayProjection } from '../office/projection.js';
 import { CharacterState } from '../office/types.js';
 import { sair } from './gate.js';
+import { Recados } from './Recados.js';
 import { registry } from './registry.js';
 import { sb } from './supabase.js';
 import { roleLabel } from './roles.js';
 import { ROOMS } from './rooms.js';
 import { MY_ID, isOwner, me } from './session.js';
+import { Voz } from './voz.js';
 
 interface Props {
   officeState: OfficeState;
@@ -31,6 +33,9 @@ const MONO = "ui-monospace,Consolas,'JetBrains Mono',monospace";
 export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
   const [, setTick] = useState(0);
   const [perto, setPerto] = useState<Perto | null>(null);
+  const [mic, setMic] = useState(false);
+  const [micMsg, setMicMsg] = useState('');
+  const alternarMic = useRef<() => void>(() => undefined);
 
   // quadro a quadro: reposiciona as etiquetas
   useEffect(() => {
@@ -100,10 +105,12 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
 
   // presenca: CEO e visitantes online se enxergam (canal publico do Supabase Realtime). Sem o CEO online, um avatar dele fica sentado na sala.
   useEffect(() => {
-    type P = { name: string; palette: number; kind: 'ceo' | 'visitor'; col: number; row: number };
+    type P = { name: string; palette: number; kind: 'ceo' | 'visitor'; col: number; row: number; mic?: boolean };
     const meuKey = Math.random().toString(36).slice(2);
     const canal = sb.channel('factory-presence', { config: { presence: { key: meuKey } } });
     const remotos = new Map<string, number>();
+    const ultimosP = new Map<string, P>();
+    const voz = new Voz(meuKey, (sinal) => void canal.send({ type: 'broadcast', event: 'rtc', payload: sinal }));
     let seq = 91000;
     let npc: number | null = null;
     const seatAt = (col: number, row: number): string | null => {
@@ -118,6 +125,7 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
         const p = arr[arr.length - 1];
         if (k === meuKey || !p) continue;
         vistos.add(k);
+        ultimosP.set(k, p);
         if (p.kind === 'ceo') ceoOnline = true;
         const cid = remotos.get(k);
         if (cid === undefined) {
@@ -132,6 +140,7 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
         if (vistos.has(k)) continue;
         officeState.removeAgent(cid);
         remotos.delete(k);
+        ultimosP.delete(k);
       }
       const sala = ROOMS.find((r) => r.type === 'ceo')?.seat;
       if (!ceoOnline && npc === null && sala) {
@@ -144,25 +153,55 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
     };
     let ultimo = '';
     let t: ReturnType<typeof setInterval> | null = null;
+    let v: ReturnType<typeof setInterval> | null = null;
+    alternarMic.current = () => {
+      if (voz.ligado) {
+        voz.desligar();
+        setMic(false);
+        setMicMsg('');
+        return;
+      }
+      void voz.ligar().then((ok) => {
+        setMic(ok);
+        setMicMsg(ok ? 'conversa por voz com quem estiver por perto' : 'microfone bloqueado no navegador');
+      });
+    };
     const iniciar = setInterval(() => {
       if (!officeState.characters.has(MY_ID)) return;
       clearInterval(iniciar);
+      canal.on('broadcast', { event: 'rtc' }, ({ payload }) => void voz.sinal(payload as never));
       canal.on('presence', { event: 'sync' }, sync).subscribe((st) => {
         if (st !== 'SUBSCRIBED') return;
         sync();
         t = setInterval(() => {
           const eu = officeState.characters.get(MY_ID);
           if (!eu) return;
-          const chave = eu.tileCol + ',' + eu.tileRow;
+          const chave = eu.tileCol + ',' + eu.tileRow + ',' + voz.ligado;
           if (chave === ultimo) return;
           ultimo = chave;
-          void canal.track({ name: me.name, palette: me.palette, kind: isOwner() ? 'ceo' : 'visitor', col: eu.tileCol, row: eu.tileRow });
+          void canal.track({ name: me.name, palette: me.palette, kind: isOwner() ? 'ceo' : 'visitor', col: eu.tileCol, row: eu.tileRow, mic: voz.ligado });
         }, 600);
+        // voz: quem esta a ate 4 tiles (e ainda ate 6 se ja conectado) e tambem esta com o microfone ligado
+        v = setInterval(() => {
+          const eu = officeState.characters.get(MY_ID);
+          if (!eu || !voz.ligado) return;
+          const conectados = new Set(voz.conectados());
+          const alvo = new Map<string, number>();
+          for (const [k, cid] of remotos) {
+            const c = officeState.characters.get(cid);
+            if (!c || !ultimosP.get(k)?.mic) continue;
+            const d = Math.hypot(c.tileCol - eu.tileCol, c.tileRow - eu.tileRow);
+            if (d <= (conectados.has(k) ? 6 : 4)) alvo.set(k, d);
+          }
+          voz.atualizar(alvo);
+        }, 700);
       });
     }, 300);
     return () => {
       clearInterval(iniciar);
       if (t) clearInterval(t);
+      if (v) clearInterval(v);
+      voz.desligar();
       void sb.removeChannel(canal);
     };
   }, [officeState]);
@@ -253,6 +292,11 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
       <div style={{ position: 'fixed', left: 16, top: 84, zIndex: 25, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
         <div style={{ font: '700 11px ' + MONO, color: isOwner() ? '#FFC95C' : '#6FCF97', letterSpacing: '.08em' }}>{me.name}</div>
         <button style={botao} onClick={trocarAvatar}>Trocar avatar/nome</button>
+        <button style={{ ...botao, ...(mic ? { borderColor: '#6FCF97', color: '#6FCF97' } : {}) }} onClick={() => alternarMic.current()}>
+          {mic ? 'Microfone: ligado' : 'Ligar microfone'}
+        </button>
+        {micMsg && <div style={{ font: '10px ' + MONO, color: '#A9B3C4', maxWidth: 170 }}>{micMsg}</div>}
+        <Recados />
         <button style={botao} onClick={sair}>Sair</button>
       </div>
       <div style={{ position: 'fixed', left: 16, bottom: 96, zIndex: 25, display: 'flex', gap: 16, font: '14px ' + MONO, color: '#EEF1F6', background: 'rgba(8,9,12,.92)', border: '1px solid #262E3A', padding: '8px 14px' }}>

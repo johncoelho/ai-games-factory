@@ -474,6 +474,11 @@ patch("engine/officeState.ts", [
 ]);
 patch("engine/characters.ts", [
   [
+    `      ch.moveProgress += (WALK_SPEED_PX_PER_SEC / TILE_SIZE) * dt;`,
+    `      // Fabrica: agente chamado para o trabalho anda mais depressa (a sala do time pode ficar do outro lado do mapa)
+      ch.moveProgress += ((WALK_SPEED_PX_PER_SEC * (ch.isActive && !ch.isHuman ? 2.5 : 1)) / TILE_SIZE) * dt;`,
+  ],
+  [
     `      if (ch.seatTimer < 0) ch.seatTimer = 0; // clear turn-end sentinel`,
     `      if (ch.seatTimer < 0) ch.seatTimer = 0; // clear turn-end sentinel
       if (ch.isHuman) break; // pessoa so anda por comando`,
