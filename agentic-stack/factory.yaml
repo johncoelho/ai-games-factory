@@ -1,0 +1,23 @@
+# Vai na raiz do repo do projeto como factory.yaml. Configuracao, nao copia de dado.
+slug: agentic-stack
+nome: Agentic Stack
+repo: github.com/johncoelho/ai-games-factory
+quadro: { tipo: github-projects, owner: johncoelho, numero: 2 }
+squad: .claude/agents
+nome_squad: AGENTIC STACK TEAM
+# Nome de cada papel do squad (o portal mostra estes nomes; a chave e o nome do arquivo em .claude/agents).
+equipe:
+  principal: Jobs
+  po: Gates
+  tech-lead: Torvalds
+  dev: Musk
+  qa: Hopper
+  designer: Ive
+# Etapas do quadro em que cada papel atua (as issues desse papel = cartoes nessas etapas). O portal mostra ao clicar no agente.
+etapas:
+  principal: Novo, Aguardando aprovação, Fila, Em andamento, Publicado
+  po: Novo, Aguardando aprovação, Fila
+  tech-lead: Em andamento
+  dev: Em andamento
+  designer: Em andamento
+  qa: Publicado

@@ -1,7 +1,7 @@
 # Vai na raiz do repo do projeto como factory.yaml. Configuracao, nao copia de dado.
 slug: agentic-stack
 nome: Agentic Stack
-repo: github.com/johncoelho/agentic-stack
+repo: github.com/johncoelho/ai-games-factory
 quadro: { tipo: github-projects, owner: johncoelho, numero: 2 }
 squad: .claude/agents
 nome_squad: AGENTIC STACK TEAM
