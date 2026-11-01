@@ -1,0 +1,18 @@
+# Configuracao do squad Marketing (divulgacao dos jogos da fabrica). Sem repo proprio por enquanto: quadro #4.
+slug: marketing
+nome: Marketing
+quadro: { tipo: github-projects, owner: johncoelho, numero: 4 }
+squad: .claude/agents
+nome_squad: SQUAD MARKETING
+equipe:
+  principal: Cook
+  po: Brin
+  copy: Hastings
+  growth: Zuckerberg
+  analytics: Pichai
+etapas:
+  principal: Novo, Aguardando aprovação, Fila, Em andamento, Publicado
+  po: Novo, Aguardando aprovação, Fila
+  copy: Em andamento
+  growth: Em andamento
+  analytics: Publicado

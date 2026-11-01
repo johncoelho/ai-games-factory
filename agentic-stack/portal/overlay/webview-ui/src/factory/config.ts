@@ -9,5 +9,7 @@ export const SB_KEY =
 export const SQUADS: { slug: string; yaml: string }[] = [
   { slug: 'naval-battle', yaml: 'https://raw.githubusercontent.com/johncoelho/naval-battle/main/factory.yaml' },
   { slug: 'agentic-stack', yaml: 'https://raw.githubusercontent.com/johncoelho/ai-games-factory/main/squads/agentic-stack.yaml' },
+  { slug: 'monopoly', yaml: 'https://raw.githubusercontent.com/johncoelho/ai-games-factory/main/squads/monopoly.yaml' },
+  { slug: 'marketing', yaml: 'https://raw.githubusercontent.com/johncoelho/ai-games-factory/main/squads/marketing.yaml' },
 ];
 export const GAMES = SQUADS.map((s) => s.slug);
