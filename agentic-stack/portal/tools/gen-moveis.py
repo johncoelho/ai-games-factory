@@ -182,6 +182,19 @@ def status_board():  # quadro de status 48x32 de parede, com graficos
     save('STATUS_BOARD', i, 'wall', 3, 2, wall=True)
 
 
+def kanban_board():  # quadro kanban 48x32 de parede: tres colunas com cartoes
+    i = Img(48, 32)
+    i.box(0, 3, 48, 27, WOOD3)
+    i.rect(2, 5, 44, 23, hx('1f2733'))
+    i.rect(2, 5, 44, 3, AMBER)
+    for k, cards in enumerate(((CYAN, PINK, YELLOW), (GREEN, CYAN), (AMBER,))):
+        x = 4 + k * 14
+        i.rect(x, 10, 12, 16, hx('2b3647'))
+        for j, c in enumerate(cards):
+            i.rect(x + 1, 11 + j * 5, 10, 4, WHITE); i.rect(x + 1, 11 + j * 5, 10, 1, c); i.rect(x + 2, 13 + j * 5, 6, 1, LGREY)
+    save('KANBAN_BOARD', i, 'wall', 3, 2, wall=True)
+
+
 def toilet():  # vaso sanitario visto de frente, usado como assento
     i = Img(16, 16)
     i.box(3, 0, 10, 6, PORC2)       # caixa acoplada
@@ -295,6 +308,6 @@ def sunlounger(id_, orient, cor):  # espreguicadeira 16x16, usada como assento
 if __name__ == '__main__':
     pool_water(); palm(); sunlounger('SUNLOUNGER_FRONT', 'front', hx('3f9fd6')); sunlounger('SUNLOUNGER_BACK', 'back', hx('e0609a'))
     tv(); tv_stand(); arcade('ARCADE_A', PURPLE, CYAN, BLUE); arcade('ARCADE_B', hx('b8402f'), YELLOW, AMBER)
-    foosball(); chess(); bar(); bar_shelf(); pool(); meeting(); status_board()
+    foosball(); chess(); bar(); bar_shelf(); pool(); meeting(); status_board(); kanban_board()
     toilet(); sink(); stall_door(); coffee_machine(); vending(); fridge(); snack_counter()
     print('ok')

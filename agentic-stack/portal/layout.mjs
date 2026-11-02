@@ -88,7 +88,7 @@ export function buildLayout() {
   const team = (i, slug, label) => {
     const x = colX(i), y = TOP;
     const p = (type, dx, dy) => add(type, x + dx, y + dy);
-    p('HANGING_PLANT', 0, -2); p('DOUBLE_BOOKSHELF', 1, -2); p('GOLD_FRAME_TEAL', 3, -2); p('CLOCK', 4, -2); p('GOLD_FRAME_TEAL', 5, -2); p('DOUBLE_BOOKSHELF', 6, -2); p('HANGING_PLANT', 8, -2);
+    p('HANGING_PLANT', 0, -2); p('DOUBLE_BOOKSHELF', 1, -2); p('KANBAN_BOARD', 3, -2); p('DOUBLE_BOOKSHELF', 6, -2); p('HANGING_PLANT', 8, -2);
     p('CACTUS', 8, 6); p('PLANT', 8, 8); p('CACTUS', 4, 9);
     for (const dx of [1, 3, 5, 7]) { p('DESK_FRONT', dx, 1); p('PC_FRONT_OFF', dx + 1, 1); p('CUSHIONED_BENCH', dx + 1, 3); }
     p('TABLE_FRONT', 3, 5);

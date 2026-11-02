@@ -5,6 +5,7 @@ import type { OfficeState } from '../office/engine/officeState.js';
 import { overlayProjection } from '../office/projection.js';
 import { CharacterState } from '../office/types.js';
 import { sair } from './gate.js';
+import { IndicadoresFabrica, KanbanSquad } from './Quadros.js';
 import { Recados } from './Recados.js';
 import { Reuniao } from './Reuniao.js';
 import { registry } from './registry.js';
@@ -39,6 +40,8 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
   const alternarMic = useRef<() => void>(() => undefined);
   const [reuniao, setReuniao] = useState<string | null>(null);
   const reuniaoRef = useRef<string | null>(null);
+  const [painel, setPainel] = useState<{ tipo: 'kanban'; game: string } | { tipo: 'ind' } | null>(null);
+  const [sobre, setSobre] = useState('');
 
   // quadro a quadro: reposiciona as etiquetas
   useEffect(() => {
@@ -298,6 +301,23 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
     }
   }
 
+  // quadros de parede clicaveis: kanban em cada sala de squad e indicadores da fabrica na sala de reuniao (mesma posicao, 3x2 tiles)
+  for (const r of ROOMS) {
+    if (r.type !== 'team' && r.type !== 'meeting') continue;
+    const kanban = r.type === 'team';
+    const larg = (3 * 16 * zoom) / dpr;
+    nodes.push(
+      <div
+        key={'quadro' + r.id}
+        title={kanban ? 'Board do projeto' : 'Indicadores da fábrica'}
+        onClick={() => setPainel(kanban ? { tipo: 'kanban', game: r.id } : { tipo: 'ind' })}
+        onMouseEnter={() => setSobre(r.id)}
+        onMouseLeave={() => setSobre('')}
+        style={{ position: 'absolute', left: project.toScreenX((r.x + 3) * 16), top: project.toScreenY((r.y - 2) * 16), width: larg, height: (larg * 2) / 3, cursor: 'pointer', pointerEvents: 'auto', zIndex: 15, border: sobre === r.id ? '2px solid #FFC95C' : '2px solid transparent', boxShadow: sobre === r.id ? '0 0 8px #FFC95C' : 'none', boxSizing: 'border-box' }}
+      />,
+    );
+  }
+
   const trocarAvatar = () => {
     void sb.auth.getSession().then(({ data }) => {
       if (!data.session) return sair();
@@ -314,6 +334,8 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
   return (
     <>
       {nodes}
+      {painel?.tipo === 'kanban' && <KanbanSquad game={painel.game} onClose={() => setPainel(null)} />}
+      {painel?.tipo === 'ind' && <IndicadoresFabrica officeState={officeState} onClose={() => setPainel(null)} />}
       <div style={{ position: 'fixed', left: 16, top: 84, zIndex: 25, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
         <div style={{ font: '700 11px ' + MONO, color: isOwner() ? '#FFC95C' : '#6FCF97', letterSpacing: '.08em' }}>{me.name}</div>
         <button style={botao} onClick={trocarAvatar}>Trocar avatar/nome</button>
