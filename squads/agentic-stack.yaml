@@ -7,7 +7,7 @@ squad: .claude/agents
 nome_squad: AGENTIC STACK TEAM
 # Nome de cada papel do squad (o portal mostra estes nomes; a chave e o nome do arquivo em .claude/agents).
 equipe:
-  principal: CTO Jobs
+  principal: CTO
   po: Gates
   tech-lead: Torvalds
   dev: Musk

@@ -8,7 +8,7 @@ nome_squad: MARKETING SQUAD
 # Nome de cada papel do squad (o portal mostra estes nomes; a chave e o nome do arquivo em .claude/agents).
 # Proposta: sobrenomes de figuras da publicidade. Trocar a vontade.
 equipe:
-  principal: CMO Bernbach
+  principal: CMO
   validador-de-mercado: Hopkins
   copywriter: Ogilvy
   gestor-de-trafego: Wanamaker
