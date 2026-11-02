@@ -1,5 +1,5 @@
 // Gera o mapa do escritorio da fabrica: 10 salas em 2 fileiras, ligadas por um corredor.
-// Fileira de cima: 4 salas de time (Naval Battle, Agentic Stack, Monopoly, Marketing) + lazer 3.
+// Fileira de cima: 5 salas de time (Naval Battle, Agentic Stack, Monopoly, Marketing, Domínio). O antigo lazer 3 virou a sala do Domínio.
 // Fileira de baixo: lazer 1, recepcao, sala do CEO, lazer 2, lazer 4.
 // Devolve o layout do Pixel Agents e a lista de salas (usada para escolher mesa e sofa de cada agente).
 
@@ -15,8 +15,9 @@ const CEO_FLOOR = { tile: 6, color: { h: 18, s: 55, b: -62, c: -75 } };
 export const SQUADS_MAPA = [
   { slug: 'naval-battle', label: 'SQUAD BATALHA NAVAL' },
   { slug: 'agentic-stack', label: 'AGENTIC STACK TEAM' },
-  { slug: 'monopoly', label: 'SQUAD MONOPOLY' },
+  { slug: 'dominiogame', label: 'SQUAD DOMÍNIO' },
   { slug: 'marketing-squad', label: 'SQUAD MARKETING' },
+  { slug: 'dominiogame', label: 'SQUAD DOMÍNIO' },
 ];
 
 export function buildLayout() {
@@ -49,7 +50,7 @@ export function buildLayout() {
   // pisos
   const colX = (i) => 1 + 10 * i;
   for (let i = 0; i < 5; i++) {
-    floor(colX(i), TOP, 9, H, i === 4 ? BLUE : WOOD); // fileira de cima (lazer 3 e a 5a sala)
+    floor(colX(i), TOP, 9, H, WOOD); // fileira de cima: 5 salas de time
   }
   floor(colX(0), BOT, 9, H, BLUE); // lazer 1
   floor(colX(1), BOT, 9, H, MARBLE); // recepcao
@@ -110,7 +111,7 @@ export function buildLayout() {
   team(1, SQUADS_MAPA[1].slug, SQUADS_MAPA[1].label);
   team(2, SQUADS_MAPA[2].slug, SQUADS_MAPA[2].label);
   team(3, SQUADS_MAPA[3].slug, SQUADS_MAPA[3].label);
-  lounge(4, TOP, 'lazer-3', 'LAZER 3');
+  team(4, SQUADS_MAPA[4].slug, SQUADS_MAPA[4].label);
   lounge(0, BOT, 'lazer-1', 'LAZER 1');
   lounge(3, BOT, 'lazer-2', 'LAZER 2');
   lounge(4, BOT, 'lazer-4', 'LAZER 4');

@@ -1,0 +1,28 @@
+# Vai na raiz do repo do jogo como factory.yaml. Configuracao, nao copia de dado.
+# Repo privado: o portal le a copia publica em johncoelho/ai-games-factory/squads/dominiogame.yaml. Manter as duas iguais.
+slug: dominiogame
+nome: Domínio
+repo: github.com/johncoelho/dominiogame
+quadro: { tipo: github-projects, owner: johncoelho, numero: 5 }
+squad: .claude/agents
+lojas: []
+nome_squad: SQUAD DOMÍNIO
+# Nome de cada papel do squad (o portal mostra estes nomes; a chave e o nome do arquivo em .claude/agents).
+equipe:
+  principal: Prefeito
+  suporte: Zelador
+  po: Urbanista
+  tech-lead: Arquiteto
+  dev: Mestre de Obras
+  qa: Fiscal
+  release: Despachante
+  game-designer: Croupier
+# Etapas do quadro em que cada papel atua (as issues desse papel = cartoes nessas etapas). O portal mostra ao clicar no agente.
+etapas:
+  principal: Novo, Aguardando aprovação, Fila, Em andamento, Publicado, Em teste
+  suporte: Novo
+  po: Aguardando aprovação, Fila
+  tech-lead: Em andamento
+  dev: Em andamento
+  release: Publicado
+  qa: Em teste
