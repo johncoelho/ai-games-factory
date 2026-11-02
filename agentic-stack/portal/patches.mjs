@@ -102,6 +102,29 @@ export class OfficeState {`,
     return this.reachable.has(col + ',' + row);
   }
 
+  /** Fabrica: ao carregar a pagina o agente ja aparece no assento em que deveria estar (mesa se trabalha, sala de estar se descansa), sem correria. */
+  factoryTeleport(id: number): void {
+    const ch = this.characters.get(id);
+    if (!ch || ch.isHuman || !ch.seatId) return;
+    const seat = this.seats.get(ch.seatId);
+    if (!seat) return;
+    ch.tileCol = seat.seatCol;
+    ch.tileRow = seat.seatRow;
+    ch.x = seat.seatCol * TILE_SIZE + TILE_SIZE / 2;
+    ch.y = seat.seatRow * TILE_SIZE + TILE_SIZE / 2;
+    ch.path = [];
+    ch.moveProgress = 0;
+    ch.dir = seat.facingDir;
+    ch.state = CharacterState.TYPE;
+    ch.frame = 0;
+    ch.frameTimer = 0;
+    if (ch.matrixEffect === 'spawn') {
+      ch.matrixEffect = null;
+      ch.matrixEffectTimer = 0;
+      ch.matrixEffectSeeds = [];
+    }
+  }
+
   private pickSeat(lounge: boolean, game?: string): string | null {
     const home = game ? ROOMS.find((r) => r.id === game) : undefined;
     const roomOf = (col: number, row: number) =>

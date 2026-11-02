@@ -185,6 +185,14 @@ export class FactoryTransport implements MessageTransport {
     }
     this.settleStale();
     this.setState(TRANSPORT_STATE_CONNECTED);
+    // Ao carregar, cada agente ja nasce onde deve estar (trabalhando na mesa ou sentado no lazer): sem correria inicial.
+    const posicionar = () => {
+      const o = (window as unknown as { __factoryOffice?: { factoryTeleport(id: number): void } }).__factoryOffice;
+      if (o) for (const id of this.keys.keys()) o.factoryTeleport(id);
+    };
+    posicionar();
+    setTimeout(posicionar, 300);
+    setTimeout(posicionar, 1200);
     let busy = false;
     const tick = async () => {
       if (busy) return;
