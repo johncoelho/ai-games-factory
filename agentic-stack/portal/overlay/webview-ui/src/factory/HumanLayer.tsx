@@ -491,7 +491,7 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
       </div>
       <div style={{ position: 'fixed', left: 16, bottom: 96, zIndex: 25, display: 'flex', gap: 16, font: '14px ' + MONO, color: '#EEF1F6', background: 'rgba(8,9,12,.92)', border: '1px solid #262E3A', padding: '8px 14px' }}>
         <span><b style={{ color: '#7AD1E0', border: '1px solid #7AD1E0', padding: '0 6px', borderRadius: 6 }}>IA</b> agente</span>
-        <span><b style={{ background: '#FFC95C', color: '#08090C', padding: '1px 8px', borderRadius: 8 }}>CEO</b> pessoa (anel no chão)</span>
+        <span><b style={{ background: '#FFC95C', color: '#08090C', padding: '1px 8px', borderRadius: 8 }}>HUMANO</b> pessoa (anel no chão)</span>
         <span><i style={{ color: '#6FCF97' }}>●</i> livre <i style={{ color: '#F2C94C' }}>●</i> aguardando <i style={{ color: '#EB5757' }}>●</i> ocupado</span>
         <span><i style={{ color: '#6FCF97' }}>●</i> {[...officeState.characters.values()].filter((c) => c.isHuman && c.humanKind !== 'recep' && (c.remote || c.id === MY_ID)).length} online</span>
         <span>clique ou WASD para andar</span>
