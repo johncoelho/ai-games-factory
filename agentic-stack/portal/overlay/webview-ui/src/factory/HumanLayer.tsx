@@ -114,6 +114,44 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
     };
   }, [officeState]);
 
+  // reuniao: o avatar do CEO vai sozinho para a sala junto com o time e, ao encerrar, volta de onde saiu
+  const antesRef = useRef<{ col: number; row: number } | null>(null);
+  useEffect(() => {
+    if (!isOwner()) return;
+    const eu = officeState.characters.get(MY_ID);
+    if (!eu) return;
+    const sala = ROOMS.find((r) => r.type === 'meeting');
+    const dentro = (c: number, r: number) => !!sala && c >= sala.x && c < sala.x + sala.w && r >= sala.y && r < sala.y + sala.h;
+    if (reuniao) {
+      if (!sala) return;
+      const fim = eu.path.length ? eu.path[eu.path.length - 1] : { col: eu.tileCol, row: eu.tileRow };
+      if (dentro(fim.col, fim.row)) return;
+      antesRef.current = { col: fim.col, row: fim.row };
+      const cx = sala.x + 4;
+      const cy = sala.y + 4;
+      const dist = (c: number, r: number) => Math.abs(c - cx) + Math.abs(r - cy);
+      const assentos: Array<[number, number]> = [];
+      for (const s of officeState.seats.values()) if (!s.assigned && dentro(s.seatCol, s.seatRow)) assentos.push([s.seatCol, s.seatRow]);
+      assentos.sort((p, q) => dist(p[0], p[1]) - dist(q[0], q[1]));
+      const chao: Array<[number, number]> = [];
+      for (let c = sala.x; c < sala.x + sala.w; c++) for (let r = sala.y; r < sala.y + sala.h; r++) chao.push([c, r]);
+      chao.sort((p, q) => dist(p[0], p[1]) - dist(q[0], q[1]));
+      // a cadeira da cabeceira e reservada ao CEO em todas as janelas (os agentes nunca sentam nela)
+      const reservada: Array<[number, number]> = [[sala.x + 4, sala.y + 2]];
+      for (const [c, r] of [...reservada, ...assentos, ...chao]) if (officeState.humanGoTo(MY_ID, c, r)) return;
+      antesRef.current = null;
+    } else if (antesRef.current) {
+      const volta = antesRef.current;
+      antesRef.current = null;
+      // so volta se ainda estiver na sala (se ele mesmo ja saiu andando, nao mexe)
+      const agora = eu.path.length ? eu.path[eu.path.length - 1] : { col: eu.tileCol, row: eu.tileRow };
+      if (!dentro(agora.col, agora.row)) return;
+      if (officeState.humanGoTo(MY_ID, volta.col, volta.row)) return;
+      const ceo = ROOMS.find((r) => r.type === 'ceo')?.seat;
+      if (ceo) officeState.humanGoTo(MY_ID, ceo.col, ceo.row);
+    }
+  }, [reuniao, officeState]);
+
   // teclado: setas ou WASD movem meu avatar um tile
   useEffect(() => {
     const dir: Record<string, [number, number]> = {

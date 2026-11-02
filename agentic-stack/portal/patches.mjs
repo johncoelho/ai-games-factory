@@ -144,7 +144,10 @@ export class OfficeState {`,
     const livres: string[] = [];
     for (const [sid, s] of this.seats) {
       if (s.assigned || !this.isReachable(s.seatCol, s.seatRow)) continue;
-      if (roomOf(s.seatCol, s.seatRow)?.type === tipo) livres.push(sid);
+      const sala = roomOf(s.seatCol, s.seatRow);
+      // a cadeira da cabeceira (x+4, y+2) da sala de reuniao e reservada ao CEO, igual em todas as janelas
+      if (tipo === 'meeting' && sala && s.seatCol === sala.x + 4 && s.seatRow === sala.y + 2) continue;
+      if (sala?.type === tipo) livres.push(sid);
     }
     return livres.length > 0 ? livres[Math.floor(Math.random() * livres.length)] : null;
   }
@@ -369,6 +372,13 @@ patch("engine/characters.ts", [
         if (sofa && ch.tileCol === sofa.seatCol && ch.tileRow === sofa.seatRow) {
           ch.dir = sofa.facingDir;
           ch.frame = 0;
+          break;
+        }
+        // Fabrica: o assento mudou (fim da reuniao, volta ao lazer): levanta e anda ate ele
+        if (sofa) {
+          ch.state = CharacterState.IDLE;
+          ch.frame = 0;
+          ch.frameTimer = 0;
           break;
         }
         if (ch.seatTimer > 0) {`,

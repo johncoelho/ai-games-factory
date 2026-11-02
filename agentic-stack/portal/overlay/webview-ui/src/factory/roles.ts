@@ -14,7 +14,7 @@ export const ROLE_LABEL: Record<string, string> = {
 const ROLE_SIGLA: Record<string, string> = {
   principal: 'PM',
   po: 'PO',
-  'tech-lead': 'CTO',
+  'tech-lead': 'TL',
   dev: 'DEV',
   qa: 'QA',
   designer: 'DSG',
