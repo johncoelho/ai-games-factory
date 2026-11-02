@@ -1,0 +1,21 @@
+# Copiar para .github/workflows/fabrica.yml do projeto, ajustando squad e quadro. Segredos do repo: CLAUDE_CODE_OAUTH_TOKEN e FABRICA_GH_TOKEN.
+name: Fabrica
+
+on:
+  issues:
+    types: [opened, reopened, labeled]
+  issue_comment:
+    types: [created]
+  schedule:
+    - cron: '17 * * * *'   # varredura de seguranca (so aciona o Claude se houver issue sem triagem)
+  workflow_dispatch: {}
+
+jobs:
+  agente:
+    uses: johncoelho/ai-games-factory/.github/workflows/fabrica-agente.yml@main
+    with:
+      squad: agentic-stack
+      quadro: 2
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      FABRICA_GH_TOKEN: ${{ secrets.FABRICA_GH_TOKEN }}
