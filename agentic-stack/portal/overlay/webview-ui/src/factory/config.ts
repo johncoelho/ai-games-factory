@@ -11,7 +11,5 @@ export const SQUADS: { slug: string; yaml: string }[] = [
   { slug: 'agentic-stack', yaml: 'https://raw.githubusercontent.com/johncoelho/ai-games-factory/main/squads/agentic-stack.yaml' },
   { slug: 'dominiogame', yaml: 'https://raw.githubusercontent.com/johncoelho/ai-games-factory/main/squads/dominiogame.yaml' },
   { slug: 'marketing-squad', yaml: 'https://raw.githubusercontent.com/johncoelho/ai-games-factory/main/squads/marketing-squad.yaml' },
-  // dominiogame: repo privado, mesma regra do agentic-stack (cópia pública do factory.yaml em squads/).
-  { slug: 'dominiogame', yaml: 'https://raw.githubusercontent.com/johncoelho/ai-games-factory/main/squads/dominiogame.yaml' },
 ];
 export const GAMES = SQUADS.map((s) => s.slug);
