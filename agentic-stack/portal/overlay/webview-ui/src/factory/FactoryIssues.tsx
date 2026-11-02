@@ -55,10 +55,10 @@ export function FactoryIssues({ game, label }: { game?: string; label?: string }
     <div
       style={{
         position: 'fixed',
-        left: 16,
-        top: 100,
-        width: 300,
-        maxHeight: '55vh',
+        left: 200,
+        top: 84,
+        width: 'min(300px, calc(100vw - 216px))',
+        maxHeight: 'calc(100vh - 260px)',
         overflow: 'auto',
         zIndex: 20,
         background: '#0F1318',

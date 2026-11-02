@@ -160,12 +160,12 @@ export function Recados() {
         {rotulo}
       </button>
       {aviso && !aberto && (
-        <div style={{ position: 'fixed', left: 16, top: 190, zIndex: 40, background: '#0F1318', border: '1px solid #FFC95C', color: '#FFC95C', font: '700 13px ' + MONO, padding: '10px 14px', cursor: 'pointer' }} onClick={() => { setAviso(''); abrir(); }}>
+        <div style={{ position: 'fixed', left: 200, top: 84, zIndex: 40, background: '#0F1318', border: '1px solid #FFC95C', color: '#FFC95C', font: '700 13px ' + MONO, padding: '10px 14px', cursor: 'pointer' }} onClick={() => { setAviso(''); abrir(); }}>
           ✉ {aviso} — clique para abrir
         </div>
       )}
       {aberto && (
-        <div style={{ position: 'fixed', left: 16, top: 190, zIndex: 40, ...caixa }}>
+        <div style={{ position: 'fixed', left: 200, top: 84, zIndex: 40, ...caixa }}>
           {dono ? (
             <>
               <div style={{ color: '#FFC95C', fontWeight: 700, marginBottom: 8 }}>CAIXA DE ENTRADA</div>
