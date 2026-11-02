@@ -43,6 +43,10 @@ const VERB: Record<string, string> = {
   Agent: 'Task',
 };
 const IDLE_AFTER_MS = 2 * 60 * 1000;
+const FERIAS_MS = 7 * 24 * 60 * 60 * 1000; // sem demanda ha mais de 1 semana: ferias na piscina
+
+type Escritorio = { factoryFerias(id: number, on: boolean): void };
+const escritorio = (): Escritorio | undefined => (window as unknown as { __factoryOffice?: Escritorio }).__factoryOffice;
 const PALETTES = 6;
 
 function hash(s: string): number {
@@ -67,6 +71,22 @@ export class FactoryTransport implements MessageTransport {
   private meta = new Map<string, { squad: string; equipe: Record<string, string> }>();
   private keys = new Map<number, { game: string; agent: string }>();
   private banner: HTMLElement | null = null;
+  private ferias = new Set<number>();
+
+  // Ferias: a view factory_agent_ultimo (ultimo e primeiro evento de cada agente) e o dono do dado. Sem historico de 1 semana, ninguem esta de ferias.
+  private async carregarFerias(): Promise<void> {
+    const { data, error } = await sb.from('factory_agent_ultimo').select('game,agent,ultimo,primeiro');
+    if (error || !data || data.length === 0) return;
+    const rows = data as unknown as Array<{ game: string; agent: string; ultimo: string; primeiro: string }>;
+    const inicio = Math.min(...rows.map((r) => Date.parse(r.primeiro)));
+    const ult = new Map(rows.map((r) => [`${r.game}|${r.agent}`, Date.parse(r.ultimo)]));
+    const corte = Date.now() - FERIAS_MS;
+    for (const [id, k] of this.keys) {
+      if ((ult.get(`${k.game}|${k.agent}`) ?? inicio) >= corte) continue;
+      this.ferias.add(id);
+      escritorio()?.factoryFerias(id, true);
+    }
+  }
 
   constructor() {
     // O mock de assets (browserMock) injeta mensagens como eventos da janela: ponte para o webview.
@@ -193,6 +213,8 @@ export class FactoryTransport implements MessageTransport {
     posicionar();
     setTimeout(posicionar, 300);
     setTimeout(posicionar, 1200);
+    void this.carregarFerias().then(() => setTimeout(posicionar, 100));
+    setInterval(() => void this.carregarFerias(), 30 * 60 * 1000);
     let busy = false;
     const tick = async () => {
       if (busy) return;
@@ -309,6 +331,8 @@ export class FactoryTransport implements MessageTransport {
     if (!GAMES.includes(e.game) || !equipe || !(e.agent in equipe)) return;
     const id = this.agentFor(e);
     this.lastSeen.set(id, new Date(e.ts).getTime());
+    // voltou a ter demanda: acaba as ferias (evento antigo do historico nao conta)
+    if (this.ferias.size > 0 && Date.now() - new Date(e.ts).getTime() < FERIAS_MS && this.ferias.delete(id)) escritorio()?.factoryFerias(id, false);
     const stack = this.pending.get(id) ?? [];
     this.pending.set(id, stack);
 
@@ -319,7 +343,8 @@ export class FactoryTransport implements MessageTransport {
         stack.push({ toolId, tool });
         const verb = VERB[tool] ?? tool;
         registry.setActivity(id, e.target ? `${verb} ${e.target}` : verb);
-        this.emit({ type: 'agentStatus', id, status: 'active' });
+        // delegou a outro agente (Task): fica aguardando ele
+        this.emit({ type: 'agentStatus', id, status: 'active', waitingAgent: tool === 'Task' });
         this.emit({
           type: 'agentToolStart',
           id,
@@ -334,6 +359,7 @@ export class FactoryTransport implements MessageTransport {
         if (i >= 0) {
           const [done] = stack.splice(i, 1);
           this.emit({ type: 'agentToolDone', id, toolId: done.toolId });
+          if (done.tool === 'Task') this.emit({ type: 'agentStatus', id, status: 'active' });
         }
         break;
       }

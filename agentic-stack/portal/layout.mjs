@@ -13,7 +13,9 @@ const MARBLE = { tile: 2, color: { h: 35, s: 18, b: -22, c: -45 } };
 const CARPET = { tile: 1, color: { h: 232, s: 38, b: -55, c: -62 } };
 const ARCADE_FLOOR = { tile: 1, color: { h: 272, s: 36, b: -50, c: -66 } };
 const TILE_WC = { tile: 2, color: { h: 190, s: 22, b: -10, c: -40 } };
-const CEO_FLOOR = { tile: 6, color: { h: 18, s: 55, b: -62, c: -75 } };
+const GRASS = { tile: 1, color: { h: 125, s: 38, b: -48, c: -62 } };
+const DECK = { tile: 7, color: { h: 30, s: 45, b: -25, c: -70 } };
+const CEO_FLOOR ={ tile: 6, color: { h: 18, s: 55, b: -62, c: -75 } };
 
 export const SQUADS_MAPA = [
   { slug: 'naval-battle', label: 'SQUAD BATALHA NAVAL' },
@@ -23,7 +25,7 @@ export const SQUADS_MAPA = [
 ];
 
 export function buildLayout() {
-  const COLS = 61; // 6 salas de 9 + 7 paredes
+  const COLS = 73; // 6 salas de 9 + 7 paredes + 12 da area externa (piscina)
   const ROWS = 29;
   const TOP = 3; // primeira linha de piso da fileira de cima
   const H = 10; // altura do piso das salas
@@ -60,7 +62,11 @@ export function buildLayout() {
   floor(colX(3), BOT, 9, H, CEO_FLOOR); // bar e sinuca
   floor(colX(4), BOT, 9, H, ARCADE_FLOOR); // jogos
   floor(colX(5), BOT, 9, H, TILE_WC); // banheiro
-  floor(1, HALL_Y, 59, 3, HALL); // corredor
+  floor(1, HALL_Y, 60, 3, HALL); // corredor (a ultima coluna e a porta para a area externa)
+  // area externa: piscina, com gramado em volta e deck de madeira
+  const PX = 61, PY = 8;
+  floor(PX, PY, 11, 14, GRASS);
+  floor(PX + 1, PY + 2, 9, 11, DECK);
 
   // portas da fileira de baixo: 3 tiles de largura atravessando o vazio (linha 16) e a parede (linha 17)
   for (let i = 0; i < 6; i++) {
@@ -83,9 +89,8 @@ export function buildLayout() {
     const x = colX(i), y = TOP;
     const p = (type, dx, dy) => add(type, x + dx, y + dy);
     p('HANGING_PLANT', 0, -2); p('DOUBLE_BOOKSHELF', 1, -2); p('GOLD_FRAME_TEAL', 3, -2); p('CLOCK', 4, -2); p('GOLD_FRAME_TEAL', 5, -2); p('DOUBLE_BOOKSHELF', 6, -2); p('HANGING_PLANT', 8, -2);
-    p('CACTUS', 8, 3); p('PLANT', 8, 8); p('CACTUS', 4, 9);
-    p('DESK_FRONT', 1, 1); p('DESK_FRONT', 5, 1); p('PC_FRONT_OFF', 2, 1); p('PC_FRONT_OFF', 6, 1);
-    p('CUSHIONED_BENCH', 2, 3); p('CUSHIONED_BENCH', 6, 3);
+    p('CACTUS', 8, 6); p('PLANT', 8, 8); p('CACTUS', 4, 9);
+    for (const dx of [1, 3, 5, 7]) { p('DESK_FRONT', dx, 1); p('PC_FRONT_OFF', dx + 1, 1); p('CUSHIONED_BENCH', dx + 1, 3); }
     p('TABLE_FRONT', 3, 5);
     p('WOODEN_CHAIR_SIDE', 2, 5); p('WOODEN_CHAIR_SIDE', 2, 7); p('WOODEN_CHAIR_SIDE:left', 6, 5); p('WOODEN_CHAIR_SIDE:left', 6, 7);
     p('PC_SIDE', 3, 5); p('PC_SIDE', 3, 7); p('PC_SIDE:left', 5, 5); p('PC_SIDE:left', 5, 7);
@@ -183,6 +188,16 @@ export function buildLayout() {
   salaJogos(4, BOT, 'lazer-jogos', 'SALA DE JOGOS');
   banheiro(5, BOT, 'banheiro', 'BANHEIRO');
 
+  // area externa: piscina para quem esta de ferias (sem demanda ha mais de 1 semana)
+  {
+    const p = (type, dx, dy) => add(type, PX + dx, PY + dy);
+    for (const [dx, dy] of [[0, 0], [10, 0], [5, 0], [0, 12], [10, 12]]) p('PALM', dx, dy);
+    p('POOL_WATER', 2, 5);
+    for (const dx of [1, 3, 5, 7, 9]) { p('SUNLOUNGER_FRONT', dx, 3); p('SUNLOUNGER_BACK', dx, 10); p('SUNLOUNGER_BACK', dx, 12); }
+    p('PLANT', 0, 2); p('PLANT', 0, 9); p('POT', 10, 6); p('POT', 10, 9);
+    area('PISCINA', '#7AD1E0', PX + 2, PY + 1, 7);
+    rooms.push({ id: 'piscina', type: 'pool', label: 'PISCINA', x: PX, y: PY, w: 11, h: 14 });
+  }
   // recepcao
   {
     const x = colX(1), y = BOT;

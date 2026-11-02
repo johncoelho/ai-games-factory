@@ -39,7 +39,13 @@ patch("types.ts", [
   visitTimer?: number;
   nextVisit?: number;
   /** Fabrica: chamado para a sala de reuniao pelo CEO (fica la ate a reuniao acabar, mesmo trabalhando). */
-  inMeeting?: boolean;`,
+  inMeeting?: boolean;
+  /** Fabrica: sinal sobre a cabeca: livre (verde), aguardando humano/agente (amarelo) ou ocupado (vermelho), e o balao de fala atual. */
+  factoryStatus?: 'free' | 'waiting' | 'busy';
+  factoryBubble?: { texto: string; ate: number } | null;
+  /** Fabrica: de ferias (sem demanda ha mais de 1 semana): fica na espreguicadeira da piscina, a nao ser que seja chamado. */
+  ferias?: boolean;
+  poolSeatId?: string | null;`,
   ],
 ]);
 
@@ -150,7 +156,55 @@ export class OfficeState {`,
     }
     ch.visitSeatId = null;
     ch.inMeeting = false;
-    ch.seatId = ch.isActive && ch.deskSeatId ? ch.deskSeatId : (ch.loungeSeatId ?? ch.seatId);
+    ch.seatId = this.factoryHome(ch) ?? ch.seatId;
+  }
+
+  /** Fabrica: horario de folga (almoco 12h-14h e noite 19h-6h, hora de Sao Paulo): quem esta livre faz o que quiser. */
+  private folga(): boolean {
+    const teste = (globalThis as unknown as { __factoryFolga?: boolean }).__factoryFolga;
+    if (typeof teste === 'boolean') return teste;
+    const h = Number(new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hour12: false, timeZone: 'America/Sao_Paulo' }).format(new Date()).slice(0, 2)) % 24;
+    return (h >= 12 && h < 14) || h >= 19 || h < 6;
+  }
+
+  /** Fabrica: onde o agente fica quando nao esta em reuniao: na mesa (trabalhando, aguardando ou em expediente), no lazer se esta livre na folga. */
+  private factoryHome(ch: Character): string | null {
+    if (ch.visitSeatId) return ch.visitSeatId;
+    if ((ch.factoryStatus ?? 'free') === 'free' && ch.ferias && ch.poolSeatId) return ch.poolSeatId;
+    if ((ch.factoryStatus ?? 'free') === 'free' && this.folga() && ch.loungeSeatId) return ch.loungeSeatId;
+    return ch.deskSeatId ?? ch.loungeSeatId ?? null;
+  }
+
+  /** Fabrica: ferias. Liga: reserva uma espreguicadeira na piscina. Desliga (voltou a ter demanda): solta a espreguicadeira. */
+  factoryFerias(id: number, on: boolean): void {
+    const ch = this.characters.get(id);
+    if (!ch || ch.isHuman || !ch.loungeSeatId || !!ch.ferias === on) return;
+    if (on) {
+      const alvo = this.visitSeat('pool');
+      if (!alvo) return;
+      this.seats.get(alvo)!.assigned = true;
+      ch.poolSeatId = alvo;
+      ch.ferias = true;
+    } else {
+      const s = ch.poolSeatId ? this.seats.get(ch.poolSeatId) : undefined;
+      if (s) s.assigned = false;
+      ch.poolSeatId = null;
+      ch.ferias = false;
+    }
+    if (!ch.inMeeting && !ch.visitSeatId) ch.seatId = this.factoryHome(ch) ?? ch.seatId;
+  }
+
+  /** Fabrica: estado do agente (verde livre, amarelo aguardando, vermelho ocupado) e o balao de fala da mudanca. */
+  factoryStatus(id: number, st: 'free' | 'waiting' | 'busy', motivo: 'humano' | 'agente' = 'humano'): void {
+    const ch = this.characters.get(id);
+    if (!ch || ch.isHuman) return;
+    const antes = ch.factoryStatus ?? 'free';
+    ch.factoryStatus = st;
+    if (st === antes) return;
+    const agora = Date.now();
+    if (st === 'busy') ch.factoryBubble = { texto: 'Começando…', ate: agora + 4000 };
+    else if (st === 'free') ch.factoryBubble = antes === 'busy' ? { texto: 'Pronto ✓', ate: agora + 6000 } : null;
+    else ch.factoryBubble = { texto: motivo === 'agente' ? 'Aguardando agente' : 'Aguardando você', ate: 0 };
   }
 
   /** Fabrica: reuniao. Chama os agentes do squad para a sala de reuniao (null encerra e todos voltam ao lugar). Idempotente: agentes que chegam depois tambem sao chamados. */
@@ -170,26 +224,36 @@ export class OfficeState {`,
   }
 
   private factoryVisits(dt: number): void {
+    const folga = this.folga();
     for (const ch of this.characters.values()) {
       if (ch.isHuman || !ch.loungeSeatId) continue;
+      if (ch.factoryBubble && ch.factoryBubble.ate > 0 && Date.now() > ch.factoryBubble.ate) ch.factoryBubble = null;
       if (ch.inMeeting) continue;
+      const livre = (ch.factoryStatus ?? 'free') === 'free';
       if (ch.visitSeatId) {
         ch.visitTimer = (ch.visitTimer ?? 0) - dt;
-        if (ch.visitTimer <= 0 || ch.isActive) this.factoryEndVisit(ch);
+        if (ch.visitTimer <= 0 || !livre) this.factoryEndVisit(ch);
         continue;
       }
-      if (ch.isActive || ch.seatId !== ch.loungeSeatId) continue;
-      const seat = this.seats.get(ch.loungeSeatId);
+      // a mesa e o lugar do agente; na folga (almoco, noite) o livre vai para o lazer, e volta quando acaba ou quando e chamado
+      const casa = this.factoryHome(ch);
+      if (casa && ch.seatId !== casa) {
+        ch.seatId = casa;
+        continue;
+      }
+      if (!livre) continue;
+      const seat = casa ? this.seats.get(casa) : undefined;
       if (!seat || ch.tileCol !== seat.seatCol || ch.tileRow !== seat.seatRow) continue;
       ch.nextVisit = (ch.nextVisit ?? 30 + Math.random() * 120) - dt;
       if (ch.nextVisit > 0) continue;
-      ch.nextVisit = 100 + Math.random() * 160;
-      const banheiro = Math.random() < 0.3;
-      const alvo = this.visitSeat(banheiro ? 'wc' : 'cafe');
+      ch.nextVisit = folga ? 40 + Math.random() * 80 : 100 + Math.random() * 160;
+      const r = Math.random();
+      const tipo = folga ? (r < 0.5 ? 'lounge' : r < 0.85 ? 'cafe' : 'wc') : r < 0.3 ? 'wc' : 'cafe';
+      const alvo = this.visitSeat(tipo);
       if (!alvo) continue;
       this.seats.get(alvo)!.assigned = true;
       ch.visitSeatId = alvo;
-      ch.visitTimer = banheiro ? 14 + Math.random() * 8 : 28 + Math.random() * 20;
+      ch.visitTimer = tipo === 'wc' ? 14 + Math.random() * 8 : tipo === 'cafe' ? 28 + Math.random() * 20 : 45 + Math.random() * 75;
       ch.seatId = alvo;
     }
   }
@@ -243,10 +307,14 @@ export class OfficeState {`,
     if (loungeId) {
       const loungeSeat = this.seats.get(loungeId)!;
       loungeSeat.assigned = true;
-      ch = createCharacter(id, palette, loungeId, loungeSeat, hueShift);
-      ch.loungeSeatId = loungeId; // o lugar do agente na sala de estar e fixo; o da mesa e pego so enquanto trabalha
-      ch.deskSeatId = null;
-      ch.isActive = false; // nasce descansando na sala de estar
+      const deskId = this.pickSeat(false, directoryName);
+      const deskSeat = deskId ? this.seats.get(deskId)! : null;
+      if (deskSeat) deskSeat.assigned = true;
+      ch = createCharacter(id, palette, deskId ?? loungeId, deskSeat ?? loungeSeat, hueShift);
+      ch.loungeSeatId = loungeId; // lugar de folga (fixo)
+      ch.deskSeatId = deskId; // a mesa e do agente, sempre: ele fica nela
+      ch.isActive = false;
+      ch.factoryStatus = 'free';
     } else if (seatId) {
       const seat = this.seats.get(seatId)!;`,
   ],
@@ -255,19 +323,8 @@ export class OfficeState {`,
       if (!active) {`,
     `      ch.isActive = active;
       if (ch.loungeSeatId) {
-        if (active && !ch.deskSeatId) {
-          const desk = this.pickSeat(false, ch.directoryName);
-          if (desk) {
-            this.seats.get(desk)!.assigned = true;
-            ch.deskSeatId = desk;
-          }
-        } else if (!active && ch.deskSeatId) {
-          const old = this.seats.get(ch.deskSeatId);
-          if (old) old.assigned = false;
-          ch.deskSeatId = null;
-        }
         if (ch.visitSeatId && !ch.inMeeting) this.factoryEndVisit(ch);
-        ch.seatId = ch.inMeeting && ch.visitSeatId ? ch.visitSeatId : active && ch.deskSeatId ? ch.deskSeatId : ch.loungeSeatId;
+        ch.seatId = this.factoryHome(ch);
       }
       if (!active) {`,
   ],
@@ -308,7 +365,7 @@ patch("engine/characters.ts", [
         if (ch.seatTimer > 0) {`,
     `      if (!ch.isActive) {
         // Fabrica: sentado na sala de estar, fica ali (sem animar de digitar).
-        const sofa = ch.seatId && (ch.seatId === ch.loungeSeatId || ch.seatId === ch.visitSeatId) ? seats.get(ch.seatId) : undefined;
+        const sofa = ch.seatId && (ch.seatId === ch.loungeSeatId || ch.seatId === ch.visitSeatId || ch.seatId === ch.deskSeatId) ? seats.get(ch.seatId) : undefined;
         if (sofa && ch.tileCol === sofa.seatCol && ch.tileRow === sofa.seatRow) {
           ch.dir = sofa.facingDir;
           ch.frame = 0;
@@ -320,7 +377,7 @@ patch("engine/characters.ts", [
     `      // Countdown wander timer
       ch.wanderTimer -= dt;`,
     `      // Fabrica: sem demanda, vai direto para o assento da sala de estar em vez de vagar.
-      if (ch.seatId && (ch.seatId === ch.loungeSeatId || ch.seatId === ch.visitSeatId)) {
+      if (ch.seatId && (ch.seatId === ch.loungeSeatId || ch.seatId === ch.visitSeatId || ch.seatId === ch.deskSeatId)) {
         const sofa = seats.get(ch.seatId);
         if (sofa) {
           const path = findPath(ch.tileCol, ch.tileRow, sofa.seatCol, sofa.seatRow, tileMap, blockedTiles);
@@ -376,6 +433,52 @@ import { overlayProjection } from '../projection.js';`,
     `              {isSelected && !isSub && <FactoryIssues game={ch.directoryName} label={ch.agentName} />}
               {showContextGauge && (
                 <div`,
+  ],
+]);
+
+// 4b2) estado do agente (verde, amarelo, vermelho) vem do transporte; o balao de fala e o sinal ficam no ToolOverlay
+patch("src:hooks/useExtensionMessages.ts", [
+  [
+    `        os.setAgentActive(id, status === 'active');
+        if (status === 'waiting') {`,
+    `        os.factoryStatus(id, status === 'active' ? (msg.waitingAgent === true ? 'waiting' : 'busy') : msg.awaitingInput === true ? 'waiting' : 'free', msg.waitingAgent === true ? 'agente' : 'humano');
+        os.setAgentActive(id, status === 'active');
+        if (status === 'waiting') {`,
+  ],
+]);
+patch("components/ToolOverlay.tsx", [
+  [`        if (ch.bubbleType && !(ch.bubbleType === 'waiting' && ch.waitingAwaitingInput)) {`, `        if (isSub && ch.bubbleType &&!(ch.bubbleType === 'waiting' && ch.waitingAwaitingInput)) {`],
+  [
+    `        // Only show the label for hovered or selected agents (unless`,
+    `        // Fabrica: pontinho de estado sobre a cabeca (verde livre, amarelo aguardando, vermelho ocupado) e balao de fala da mudanca
+        let estadoNode = null;
+        if (!ch.isHuman && !isSub) {
+          const st = ch.factoryStatus ?? 'free';
+          const cor = st === 'busy' ? '#EB5757' : st === 'waiting' ? '#F2C94C' : '#6FCF97';
+          const sentado = ch.state === CharacterState.TYPE ? CHARACTER_SITTING_OFFSET_PX : 0;
+          const topo = project.toScreenY(ch.y + sentado - 34) - 13;
+          const fb = ch.factoryBubble;
+          estadoNode = fb ? (
+            <div
+              className="absolute -translate-x-1/2 pointer-events-none"
+              style={{ left: project.toScreenX(ch.x), top: topo - 26, whiteSpace: 'nowrap', padding: '2px 6px', background: '#0F1318', color: '#EEF1F6', border: '1px solid ' + cor, font: "11px ui-monospace,Consolas,monospace", zIndex: OVERLAY_BUBBLE_Z_INDEX }}
+            >
+              {fb.texto}
+            </div>
+          ) : null;
+        }
+
+        // Only show the label for hovered or selected agents (unless`,
+  ],
+  [`          return bubbleNode && <Fragment key={id}>{bubbleNode}</Fragment>;`, `          return <Fragment key={id}>{bubbleNode}{estadoNode}</Fragment>;`],
+  [
+    `              {bubbleNode}
+              <div
+                className="absolute"`,
+    `              {bubbleNode}
+              {estadoNode}
+              <div
+                className="absolute"`,
   ],
 ]);
 

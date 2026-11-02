@@ -9,7 +9,7 @@ import { Recados } from './Recados.js';
 import { Reuniao } from './Reuniao.js';
 import { registry } from './registry.js';
 import { sb } from './supabase.js';
-import { roleLabel } from './roles.js';
+import { roleLabel, roleSigla } from './roles.js';
 import { ROOMS } from './rooms.js';
 import { MY_ID, isOwner, me } from './session.js';
 import { Voz } from './voz.js';
@@ -276,18 +276,23 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
           style={{ position: 'absolute', left: x, top: topo - 30, transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 16, textAlign: 'center', whiteSpace: 'nowrap' }}
         >
           <div style={{ display: 'inline-block', background: cor, color: '#08090C', font: '700 10px ' + MONO, letterSpacing: '.1em', padding: '1px 7px', borderRadius: 8 }}>
-            {ceo ? 'HUMANO · CEO' : 'HUMANO · VISITANTE'}
+            {ceo ? 'CEO' : 'VISITANTE'}
           </div>
           <div style={{ font: '700 13px ' + MONO, color: '#fff', textShadow: '1px 1px 0 #000, -1px 1px 0 #000' }}>{ch.humanName}</div>
         </div>,
       );
     } else if (registry.agent(id)) {
+      // sigla do cargo com o ponto de estado: verde livre, amarelo aguardando, vermelho ocupado
+      const st = ch.factoryStatus ?? 'free';
+      const corSt = st === 'busy' ? '#EB5757' : st === 'waiting' ? '#F2C94C' : '#6FCF97';
+      const sentado = ch.state === CharacterState.TYPE ? CHARACTER_SITTING_OFFSET_PX : 0;
       nodes.push(
         <div
           key={'ia' + id}
-          style={{ position: 'absolute', left: x, top: pes + 1, transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 14, background: '#7AD1E0', color: '#08090C', font: '700 9px ' + MONO, letterSpacing: '.1em', padding: '0 5px', borderRadius: 2 }}
+          style={{ position: 'absolute', left: x, top: project.toScreenY(ch.y + sentado - 34) - 13, transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 14, display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap', background: '#0F1318', color: '#7AD1E0', border: '1px solid #7AD1E0', font: '700 9px ' + MONO, letterSpacing: '.08em', padding: '0 4px 0 3px', borderRadius: 6 }}
         >
-          IA
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: corSt, boxShadow: '0 0 4px ' + corSt }} />
+          {roleSigla(registry.agent(id)!.role)}
         </div>,
       );
     }
@@ -329,8 +334,9 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
         <button style={botao} onClick={sair}>Sair</button>
       </div>
       <div style={{ position: 'fixed', left: 16, bottom: 96, zIndex: 25, display: 'flex', gap: 16, font: '14px ' + MONO, color: '#EEF1F6', background: 'rgba(8,9,12,.92)', border: '1px solid #262E3A', padding: '8px 14px' }}>
-        <span><b style={{ background: '#7AD1E0', color: '#08090C', padding: '1px 6px', borderRadius: 2 }}>IA</b> agente</span>
-        <span><b style={{ background: '#FFC95C', color: '#08090C', padding: '1px 8px', borderRadius: 8 }}>HUMANO</b> pessoa (anel no chão)</span>
+        <span><b style={{ color: '#7AD1E0', border: '1px solid #7AD1E0', padding: '0 6px', borderRadius: 6 }}>PM</b> agente</span>
+        <span><b style={{ background: '#FFC95C', color: '#08090C', padding: '1px 8px', borderRadius: 8 }}>CEO</b> pessoa (anel no chão)</span>
+        <span><i style={{ color: '#6FCF97' }}>●</i> livre <i style={{ color: '#F2C94C' }}>●</i> aguardando <i style={{ color: '#EB5757' }}>●</i> ocupado</span>
         <span>clique ou WASD para andar</span>
       </div>
       {perto && (

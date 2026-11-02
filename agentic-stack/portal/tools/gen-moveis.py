@@ -250,7 +250,50 @@ def snack_counter():  # balcao do cafe 48x32 com frutas e bolo
     save('SNACK_COUNTER', i, 'desks', 3, 2, bg=1)
 
 
+def pool_water():  # piscina vista de cima 112x64 (7x4 tiles)
+    i = Img(112, 64)
+    stone = hx('d8d2c4'); stone2 = hx('a9a393'); w1 = hx('3fa9d6'); w2 = hx('5cc3e8'); w3 = hx('2f8fbd'); hi = hx('c8eefa'); edge = hx('2a7aa6')
+    i.rect(0, 0, 112, 64, stone2); i.rect(1, 1, 110, 62, stone)
+    i.rect(5, 5, 102, 54, edge); i.rect(6, 6, 100, 52, w1)
+    for y in range(6, 58):
+        if (y // 4) % 2 == 0:
+            i.rect(6, y, 100, 1, w2)
+    i.rect(6, 31, 100, 1, w3); i.rect(6, 32, 100, 1, w3)
+    for k, y in enumerate(range(10, 54, 7)):
+        for x in range(10 + (k % 2) * 7, 100, 14):
+            i.rect(x, y, 5, 1, hi)
+    i.rect(100, 4, 2, 10, LGREY); i.rect(104, 4, 2, 10, LGREY); i.rect(100, 4, 6, 2, GREY)   # escada
+    i.box(60, 27, 9, 9, WHITE, RED); i.rect(62, 29, 5, 5, w1)   # boia
+    save('POOL_WATER', i, 'decor', 7, 4)
+
+
+def palm():  # palmeira 16x32
+    i = Img(16, 32)
+    i.rect(7, 12, 3, 19, WOOD2); i.rect(7, 12, 1, 19, WOOD3)
+    for y in (16, 21, 26):
+        i.rect(7, y, 3, 1, WOOD3)
+    leaf = hx('2f8a47'); leaf2 = hx('58c46a')
+    for dx, dy, w in ((-6, 3, 7), (-5, 7, 6), (9, 3, 7), (8, 7, 6), (1, 0, 7), (3, 8, 5)):
+        i.rect(8 + dx - 1, 2 + dy, w, 2, leaf); i.rect(8 + dx - 1, 2 + dy, w, 1, leaf2)
+    i.rect(5, 9, 6, 4, leaf); i.rect(6, 8, 4, 1, leaf2)
+    i.rect(6, 12, 2, 2, RED); i.rect(9, 13, 2, 2, RED)
+    save('PALM', i, 'decor', 1, 2, bg=1)
+
+
+def sunlounger(id_, orient, cor):  # espreguicadeira 16x16, usada como assento
+    i = Img(16, 16)
+    i.box(2, 0, 12, 16, WHITE)
+    for y in range(2, 14, 4):
+        i.rect(3, y, 10, 2, cor)
+    if orient == 'front':
+        i.rect(4, 1, 8, 3, hx('f2efe6')); i.rect(4, 1, 8, 1, LGREY)
+    else:
+        i.rect(4, 12, 8, 3, hx('f2efe6')); i.rect(4, 14, 8, 1, LGREY)
+    save(id_, i, 'chairs', 1, 1, orient=orient)
+
+
 if __name__ == '__main__':
+    pool_water(); palm(); sunlounger('SUNLOUNGER_FRONT', 'front', hx('3f9fd6')); sunlounger('SUNLOUNGER_BACK', 'back', hx('e0609a'))
     tv(); tv_stand(); arcade('ARCADE_A', PURPLE, CYAN, BLUE); arcade('ARCADE_B', hx('b8402f'), YELLOW, AMBER)
     foosball(); chess(); bar(); bar_shelf(); pool(); meeting(); status_board()
     toilet(); sink(); stall_door(); coffee_machine(); vending(); fridge(); snack_counter()

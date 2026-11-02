@@ -1,0 +1,13 @@
+{
+  "id": "POOL_WATER",
+  "name": "Pool Water",
+  "category": "decor",
+  "type": "asset",
+  "canPlaceOnWalls": false,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 0,
+  "width": 112,
+  "height": 64,
+  "footprintW": 7,
+  "footprintH": 4
+}
