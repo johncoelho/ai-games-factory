@@ -16,7 +16,7 @@ export const SQUADS_MAPA = [
   { slug: 'naval-battle', label: 'SQUAD BATALHA NAVAL' },
   { slug: 'agentic-stack', label: 'AGENTIC STACK TEAM' },
   { slug: 'monopoly', label: 'SQUAD MONOPOLY' },
-  { slug: 'marketing', label: 'SQUAD MARKETING' },
+  { slug: 'marketing-squad', label: 'SQUAD MARKETING' },
 ];
 
 export function buildLayout() {

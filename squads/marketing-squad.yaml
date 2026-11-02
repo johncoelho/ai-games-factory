@@ -1,0 +1,24 @@
+# Copia publica do factory.yaml do repo marketing-squad (privado). A fonte e o factory.yaml la.
+slug: marketing-squad
+nome: Marketing Squad
+repo: github.com/johncoelho/marketing-squad
+quadro: { tipo: github-projects, owner: johncoelho, numero: 4 }
+squad: .claude/agents
+nome_squad: MARKETING SQUAD
+# Nome de cada papel do squad (o portal mostra estes nomes; a chave e o nome do arquivo em .claude/agents).
+# Proposta: sobrenomes de figuras da publicidade. Trocar a vontade.
+equipe:
+  principal: Bernbach
+  validador-de-mercado: Hopkins
+  copywriter: Ogilvy
+  gestor-de-trafego: Wanamaker
+  analista-de-funil: Kaushik
+  auditor-tecnico: Deming
+# Etapas do quadro em que cada papel atua (as issues desse papel = cartoes nessas etapas).
+etapas:
+  principal: Ideia, Aguardando aprovação, Pronto (pausado), Concluído
+  validador-de-mercado: Ideia, Validando, Aguardando aprovação
+  copywriter: Construindo
+  auditor-tecnico: Construindo, Pronto (pausado)
+  gestor-de-trafego: Pronto (pausado), Rodando
+  analista-de-funil: Rodando, Diagnóstico
