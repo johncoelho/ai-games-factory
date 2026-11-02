@@ -294,7 +294,7 @@ export class FactoryTransport implements MessageTransport {
 
   private label(game: string, agent: string): string {
     const apelido = this.meta.get(game)?.equipe[agent];
-    return apelido ? `${apelido} (${roleLabel(agent)})` : roleLabel(agent);
+    return apelido ? `${apelido} (${roleLabel(agent, game)})` : roleLabel(agent, game);
   }
 
   private sendTeamInfo(id: number): void {

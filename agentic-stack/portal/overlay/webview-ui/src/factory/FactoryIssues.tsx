@@ -8,7 +8,7 @@ import { isOwner } from './session.js';
 // Painel de issues do agente selecionado. O papel vem do rotulo "Apelido (papel)" definido pelo transporte.
 export function FactoryIssues({ game, label }: { game?: string; label?: string }) {
   const [res, setRes] = useState<Resultado | null>(null);
-  const role = label ? roleFromLabel(/\(([^)]+)\)\s*$/.exec(label)?.[1] ?? label) : '';
+  const role = label ? roleFromLabel(/\(([^)]+)\)\s*$/.exec(label)?.[1] ?? label, game) : '';
 
   useEffect(() => {
     if (!game || !role || !isOwner()) return;

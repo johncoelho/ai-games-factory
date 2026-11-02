@@ -22,7 +22,26 @@ const ROLE_SIGLA: Record<string, string> = {
   release: 'REL',
   'game-designer': 'GD',
 };
-export const roleSigla = (role: string): string => ROLE_SIGLA[role] ?? role.slice(0, 4).toUpperCase();
-export const roleLabel =(role: string): string => ROLE_LABEL[role] ?? role;
-export const roleFromLabel = (label: string): string =>
-  Object.entries(ROLE_LABEL).find(([, v]) => v === label)?.[0] ?? label;
+// Sobrescritas por squad (slug do jogo): sigla e rotulo diferentes do padrao.
+const OVERRIDES: Record<string, Record<string, { sigla: string; label: string }>> = {
+  'agentic-stack': {
+    principal: { sigla: 'CTO', label: 'CTO' },
+    'tech-lead': { sigla: 'TL', label: 'Tech Lead' },
+  },
+  'marketing-squad': {
+    principal: { sigla: 'CMO', label: 'CMO' },
+  },
+};
+export const roleSigla = (role: string, game?: string): string =>
+  (game && OVERRIDES[game]?.[role]?.sigla) || ROLE_SIGLA[role] || role.slice(0, 4).toUpperCase();
+export const roleLabel = (role: string, game?: string): string =>
+  (game && OVERRIDES[game]?.[role]?.label) || ROLE_LABEL[role] || role;
+// Desfaz o rotulo para a chave tecnica do papel; com o squad, as sobrescritas dele valem primeiro.
+export const roleFromLabel = (label: string, game?: string): string => {
+  const ov = game ? OVERRIDES[game] : undefined;
+  const dele = ov && Object.entries(ov).find(([, v]) => v.label === label)?.[0];
+  if (dele) return dele;
+  // Rotulo padrao so vale se o squad nao o trocou por outro (ex.: "Tech Lead" no padrao, mas no agentic-stack tambem e tech-lead).
+  const padrao = Object.entries(ROLE_LABEL).find(([k, v]) => v === label && !(ov && ov[k] && ov[k].label !== label))?.[0];
+  return padrao ?? label;
+};

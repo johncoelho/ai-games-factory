@@ -352,7 +352,7 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
       if (!info) return setPerto(null);
       setPerto({
         nome: info.nome,
-        papel: roleLabel(info.role),
+        papel: roleLabel(info.role, info.game),
         squad: registry.squad(info.game) ?? info.game,
         atividade: registry.activity(melhor.id) || 'parado',
       });
@@ -402,7 +402,7 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
           style={{ position: 'absolute', left: x, top: project.toScreenY(ch.y + sentado - 34) - 13, transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 14, display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap', background: '#0F1318', color: '#7AD1E0', border: '1px solid #7AD1E0', font: '700 9px ' + MONO, letterSpacing: '.08em', padding: '0 4px 0 3px', borderRadius: 6 }}
         >
           <span style={{ width: 7, height: 7, borderRadius: '50%', background: corSt, boxShadow: '0 0 4px ' + corSt }} />
-          {roleSigla(registry.agent(id)!.role)}
+          {roleSigla(registry.agent(id)!.role, registry.agent(id)!.game)}
         </div>,
       );
     }
