@@ -634,7 +634,7 @@ patch("types.ts", [
   /** Fabrica: pessoa (CEO ou visitante), nao agente. */
   isHuman?: boolean;
   humanName?: string;
-  humanKind?: 'ceo' | 'visitor';`,
+  humanKind?: 'ceo' | 'visitor' | 'recep';`,
   ],
 ]);
 patch("engine/officeState.ts", [
@@ -648,7 +648,7 @@ patch("engine/officeState.ts", [
     hueShift: number,
     seatId: string | null,
     name: string,
-    kind: 'ceo' | 'visitor',
+    kind: 'ceo' | 'visitor' | 'recep',
     col = 1,
     row = 1,
   ): void {

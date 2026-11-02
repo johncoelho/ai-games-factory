@@ -107,6 +107,16 @@ export function Recados() {
   useEffect(() => {
     if (dono && 'Notification' in window && Notification.permission === 'default') void Notification.requestPermission().catch(() => undefined);
   }, [dono]);
+  // a recepcionista (Bia) abre a caixa quando alguem fala com ela e avisa o CEO dos recados novos
+  const abrirRef = useRef<() => void>(() => undefined);
+  useEffect(() => {
+    const abre = () => abrirRef.current();
+    window.addEventListener('factory-recepcao', abre);
+    return () => window.removeEventListener('factory-recepcao', abre);
+  }, []);
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('factory-recados-nao-lidos', { detail: dono ? naoLidos : 0 }));
+  }, [dono, naoLidos]);
   const novasRespostas = meus.filter((m) => m.reply && !vistasIds.includes(m.id));
 
   const abrir = () => {
@@ -124,6 +134,10 @@ export function Recados() {
     if (prox) void carregar();
   };
 
+  abrirRef.current = () => {
+    if (!aberto) abrir();
+  };
+
   const enviar = async () => {
     const body = texto.trim();
     if (!body) return;
@@ -135,6 +149,7 @@ export function Recados() {
     }
     setTexto('');
     setMsg('Recado enviado. Volte depois para ver a resposta.');
+    window.dispatchEvent(new CustomEvent('factory-recado-anotado'));
     void carregar();
   };
 
@@ -196,7 +211,7 @@ export function Recados() {
             </>
           ) : (
             <>
-              <div style={{ color: '#FFC95C', fontWeight: 700, marginBottom: 6 }}>RECADO PARA O CEO</div>
+              <div style={{ color: '#FFC95C', fontWeight: 700, marginBottom: 6 }}>RECADO PARA O CEO · A BIA ANOTA</div>
               <div style={{ color: '#A9B3C4', marginBottom: 6 }}>Se ele não estiver por aqui, o recado fica guardado e a resposta aparece aqui quando você voltar a este navegador.</div>
               <textarea rows={3} maxLength={1000} style={campo} placeholder="escreva seu recado" value={texto} onChange={(e) => setTexto(e.target.value)} />
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6 }}>

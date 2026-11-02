@@ -47,7 +47,8 @@ const FERIAS_MS = 7 * 24 * 60 * 60 * 1000; // sem demanda ha mais de 1 semana: f
 
 type Escritorio = { factoryFerias(id: number, on: boolean): void };
 const escritorio = (): Escritorio | undefined => (window as unknown as { __factoryOffice?: Escritorio }).__factoryOffice;
-const PALETTES = 6;
+const PALETTES = 30;
+const PALETA_BIA = 13; // reservada para a recepcionista
 
 function hash(s: string): number {
   let h = 0;
@@ -61,6 +62,7 @@ export class FactoryTransport implements MessageTransport {
   private _state: TransportState = TRANSPORT_STATE_CONNECTING;
   readonly ready: Promise<void> = Promise.resolve();
 
+  private paletasUsadas = new Set<number>();
   private ids = new Map<string, number>();
   private lastSeen = new Map<number, number>();
   private pending = new Map<number, Array<{ toolId: string; tool: string }>>();
@@ -273,13 +275,21 @@ export class FactoryTransport implements MessageTransport {
         type: 'agentCreated',
         id,
         directoryName: e.game,
-        palette: hash(e.agent) % PALETTES,
+        palette: this.paletaUnica(key),
       });
       this.keys.set(id, { game: e.game, agent: e.agent });
       this.sendTeamInfo(id);
       void this.loadMeta(e.game);
     }
     return id;
+  }
+
+  // Cada agente com um avatar proprio: sorteio fixo pela chave jogo|agente (o mesmo agente sempre tem a mesma cara), pulando os ja usados.
+  private paletaUnica(key: string): number {
+    let p = hash(key) % PALETTES;
+    for (let i = 0; i < PALETTES && (p === PALETA_BIA || this.paletasUsadas.has(p)); i++) p = (p + 1) % PALETTES;
+    this.paletasUsadas.add(p);
+    return p;
   }
 
   private label(game: string, agent: string): string {

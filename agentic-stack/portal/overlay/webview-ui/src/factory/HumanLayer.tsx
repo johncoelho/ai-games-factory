@@ -29,6 +29,7 @@ interface Perto {
   atividade: string;
 }
 
+const BIA_ID = 90999;
 const MONO = "ui-monospace,Consolas,'JetBrains Mono',monospace";
 
 // Avatares humanos (CEO e visitantes), etiquetas que distinguem humano de agente (IA) e o painel de quem esta por perto.
@@ -42,6 +43,26 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
   const reuniaoRef = useRef<string | null>(null);
   const [painel, setPainel] = useState<{ tipo: 'kanban'; game: string } | { tipo: 'ind' } | null>(null);
   const [sobre, setSobre] = useState('');
+  const [biaFala, setBiaFala] = useState('');
+  const [naoLidos, setNaoLidos] = useState(0);
+
+  // recepcionista: confirma o recado anotado e avisa o CEO de quantos esperam na caixa de entrada
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout> | null = null;
+    const anotado = () => {
+      setBiaFala('Anotado! Já está na caixa do John.');
+      if (t) clearTimeout(t);
+      t = setTimeout(() => setBiaFala(''), 7000);
+    };
+    const lidos = (e: Event) => setNaoLidos((e as CustomEvent<number>).detail ?? 0);
+    window.addEventListener('factory-recado-anotado', anotado);
+    window.addEventListener('factory-recados-nao-lidos', lidos);
+    return () => {
+      window.removeEventListener('factory-recado-anotado', anotado);
+      window.removeEventListener('factory-recados-nao-lidos', lidos);
+      if (t) clearTimeout(t);
+    };
+  }, []);
 
   // quadro a quadro: reposiciona as etiquetas
   useEffect(() => {
@@ -63,6 +84,13 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
       if (feito || officeState.seats.size === 0) return;
       feito = true;
       clearInterval(t);
+      // a recepcionista (Bia) senta na mesa da recepcao antes de qualquer visitante escolher lugar
+      const recepcao = ROOMS.find((r) => r.type === 'reception');
+      if (recepcao?.seat) {
+        let bsid: string | null = null;
+        for (const [sid, s] of officeState.seats) if (s.seatCol === recepcao.seat.col && s.seatRow === recepcao.seat.row) bsid = sid;
+        officeState.addHuman(BIA_ID, 13, 0, bsid, 'Bia', 'recep', recepcao.seat.col, recepcao.seat.row);
+      }
       let seatId: string | null = null;
       if (isOwner()) {
         const seat = ROOMS.find((r) => r.type === 'ceo')?.seat;
@@ -265,7 +293,8 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
     const pes = project.toScreenY(ch.y);
     if (ch.isHuman) {
       const ceo = ch.humanKind === 'ceo';
-      const cor = ceo ? '#FFC95C' : '#6FCF97';
+      const recep = ch.humanKind === 'recep';
+      const cor = ceo ? '#FFC95C' : recep ? '#F29BC4' : '#6FCF97';
       const sentado = ch.state === CharacterState.TYPE ? CHARACTER_SITTING_OFFSET_PX : 0;
       const topo = project.toScreenY(ch.y + sentado - TOOL_OVERLAY_VERTICAL_OFFSET);
       const larg = (18 * zoom) / dpr;
@@ -279,7 +308,7 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
           style={{ position: 'absolute', left: x, top: topo - 30, transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 16, textAlign: 'center', whiteSpace: 'nowrap' }}
         >
           <div style={{ display: 'inline-block', background: cor, color: '#08090C', font: '700 10px ' + MONO, letterSpacing: '.1em', padding: '1px 7px', borderRadius: 8 }}>
-            {ceo ? 'CEO' : 'VISITANTE'}
+            {ceo ? 'CEO' : recep ? 'RECEPÇÃO' : 'VISITANTE'}
           </div>
           <div style={{ font: '700 13px ' + MONO, color: '#fff', textShadow: '1px 1px 0 #000, -1px 1px 0 #000' }}>{ch.humanName}</div>
         </div>,
@@ -299,6 +328,33 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
         </div>,
       );
     }
+  }
+
+  // Bia: clicar nela abre o recado (visitante) ou a caixa de entrada (CEO); o balao confirma ou avisa dos recados novos
+  const bia = officeState.characters.get(BIA_ID);
+  if (bia) {
+    const bx = project.toScreenX(bia.x);
+    const sentado = bia.state === CharacterState.TYPE ? CHARACTER_SITTING_OFFSET_PX : 0;
+    const bTopo = project.toScreenY(bia.y + sentado - TOOL_OVERLAY_VERTICAL_OFFSET);
+    const larg = (16 * zoom) / dpr;
+    const fala = biaFala || (isOwner() ? (naoLidos ? (naoLidos === 1 ? '1 recado novo para você' : naoLidos + ' recados novos para você') : '') : 'Deixe seu recado comigo 💬');
+    nodes.push(
+      <div
+        key="bia-hot"
+        title="Falar com a Bia"
+        onClick={() => window.dispatchEvent(new CustomEvent('factory-recepcao'))}
+        style={{ position: 'absolute', left: bx - larg / 2, top: bTopo + 4, width: larg, height: larg * 2, cursor: 'pointer', pointerEvents: 'auto', zIndex: 15 }}
+      />,
+    );
+    if (fala)
+      nodes.push(
+        <div
+          key="bia-fala"
+          style={{ position: 'absolute', left: bx, top: bTopo - 56, transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 17, whiteSpace: 'nowrap', background: '#0F1318', color: '#EEF1F6', border: '1px solid #F29BC4', font: '700 11px ' + MONO, padding: '3px 8px', borderRadius: 6 }}
+        >
+          {fala}
+        </div>,
+      );
   }
 
   // quadros de parede clicaveis: kanban em cada sala de squad e indicadores da fabrica na sala de reuniao (mesma posicao, 3x2 tiles)
