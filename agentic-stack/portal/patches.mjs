@@ -634,7 +634,9 @@ patch("types.ts", [
   /** Fabrica: pessoa (CEO ou visitante), nao agente. */
   isHuman?: boolean;
   humanName?: string;
-  humanKind?: 'ceo' | 'visitor' | 'recep';`,
+  humanKind?: 'ceo' | 'visitor' | 'recep';
+  /** Fabrica: avatar de outra pessoa online. A posicao exata (px) vem da rede; aqui so se interpola ate ela. */
+  remote?: { x: number; y: number; dir: number; sit: boolean } | null;`,
   ],
 ]);
 patch("engine/officeState.ts", [
@@ -713,6 +715,48 @@ patch("engine/officeState.ts", [
     `      // Skip characters that are despawning
       if (ch.matrixEffect === 'despawn') continue;
       if (ch.isHuman) continue; // pessoa nao e agente: clicar nela vira clique no chao`,
+  ],
+]);
+// 4i) pessoa online em outra tela: mesma posicao XY, sem pathfinding local (jogo online)
+patch("engine/characters.ts", [
+  [
+    `  ch.frameTimer += dt;
+
+  switch (ch.state) {`,
+    `  ch.frameTimer += dt;
+
+  if (ch.remote) {
+    const r = ch.remote;
+    const dx = r.x - ch.x;
+    const dy = r.y - ch.y;
+    const d = Math.hypot(dx, dy);
+    if (d > 80) {
+      ch.x = r.x;
+      ch.y = r.y;
+    } else if (d > 0.25) {
+      const passo = Math.min(d, Math.max(WALK_SPEED_PX_PER_SEC * 1.5, d * 10) * dt);
+      ch.x += (dx / d) * passo;
+      ch.y += (dy / d) * passo;
+    }
+    ch.tileCol = Math.floor(ch.x / TILE_SIZE);
+    ch.tileRow = Math.floor(ch.y / TILE_SIZE);
+    ch.path = [];
+    if (d > 0.6 && !r.sit) {
+      ch.state = CharacterState.WALK;
+      ch.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? Direction.RIGHT : Direction.LEFT) : dy > 0 ? Direction.DOWN : Direction.UP;
+      if (ch.frameTimer >= WALK_FRAME_DURATION_SEC) {
+        ch.frameTimer -= WALK_FRAME_DURATION_SEC;
+        ch.frame = (ch.frame + 1) % 4;
+      }
+    } else {
+      ch.state = r.sit ? CharacterState.TYPE : CharacterState.IDLE;
+      ch.dir = r.dir as typeof ch.dir;
+      ch.frame = 0;
+    }
+    return;
+  }
+
+  switch (ch.state) {`,
   ],
 ]);
 patch("engine/characters.ts", [

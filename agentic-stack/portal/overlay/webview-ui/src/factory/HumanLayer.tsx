@@ -139,11 +139,45 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
 
   // presenca: CEO e visitantes online se enxergam (canal publico do Supabase Realtime). Sem o CEO online, um avatar dele fica sentado na sala.
   useEffect(() => {
-    type P = { name: string; palette: number; kind: 'ceo' | 'visitor'; col: number; row: number; mic?: boolean; t?: number; meeting?: string | null };
+    type P = { name: string; palette: number; kind: 'ceo' | 'visitor'; col: number; row: number; x?: number; y?: number; d?: number; sit?: boolean; mic?: boolean; t?: number; meeting?: string | null };
+    type Pos = { x: number; y: number; d: number; s: boolean };
     const meuKey = Math.random().toString(36).slice(2);
-    const canal = sb.channel('factory-presence', { config: { presence: { key: meuKey } } });
+    const canal = sb.channel(location.hostname === 'localhost' ? 'factory-presence-dev' : 'factory-presence', { config: { presence: { key: meuKey } } });
     const remotos = new Map<string, number>();
     const ultimosP = new Map<string, P>();
+    // posicao exata de cada pessoa online (px), recebida a ~10 vezes por segundo: todas as telas mostram o mesmo XY
+    const posRemota = new Map<string, Pos>();
+    const sumiuEm = new Map<string, number>();
+    // ultima vez (relogio local) que ouvimos sinal de vida de cada pessoa: posicao ou re-registro de presenca. Sem sinal por 30 s, a pessoa saiu mesmo que a presenca nao avise.
+    const sinalEm = new Map<string, number>();
+    const assentoRemoto = new Map<string, string>();
+    const aplicarPos = (k: string, pos: Pos) => {
+      posRemota.set(k, pos);
+      sinalEm.set(k, Date.now());
+      const cid = remotos.get(k);
+      const ch = cid === undefined ? undefined : officeState.characters.get(cid);
+      if (!ch || cid === undefined) return;
+      ch.remote = { x: pos.x, y: pos.y, dir: pos.d, sit: pos.s };
+      // quem esta sentado ocupa o assento (ninguem mais senta nele); ao levantar, libera
+      const col = Math.floor(pos.x / 16);
+      const row = Math.floor(pos.y / 16);
+      const atual = assentoRemoto.get(k) ?? null;
+      const alvo = pos.s ? seatAt(col, row) : null;
+      if (atual !== alvo) {
+        if (atual) {
+          const st = officeState.seats.get(atual);
+          if (st) st.assigned = false;
+          assentoRemoto.delete(k);
+        }
+        if (alvo) {
+          const st = officeState.seats.get(alvo);
+          if (st && !st.assigned) {
+            st.assigned = true;
+            assentoRemoto.set(k, alvo);
+          }
+        }
+      }
+    };
     const voz = new Voz(meuKey, (sinal) => void canal.send({ type: 'broadcast', event: 'rtc', payload: sinal }));
     (window as unknown as { __factoryVoz?: Voz }).__factoryVoz = voz;
     let seq = 91000;
@@ -170,6 +204,8 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
       for (const [k, arr] of Object.entries(estado)) {
         const p = arr[arr.length - 1];
         if (k === meuKey || !p) continue;
+        if (ultimosP.get(k)?.t !== p.t || !sinalEm.has(k)) sinalEm.set(k, Date.now());
+        if (Date.now() - (sinalEm.get(k) ?? 0) > 30_000) continue;
         if (p.kind === 'ceo' && (isOwner() || k !== ceoKey)) continue;
         vistos.add(k);
         ultimosP.set(k, p);
@@ -178,16 +214,30 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
         if (cid === undefined) {
           const novo = seq++;
           remotos.set(k, novo);
-          officeState.addHuman(novo, p.palette, 0, seatAt(p.col, p.row), p.name, p.kind, p.col, p.row);
-        } else {
-          officeState.humanGoTo(cid, p.col, p.row);
+          officeState.addHuman(novo, p.palette, 0, null, p.name, p.kind, p.col, p.row);
+          aplicarPos(k, posRemota.get(k) ?? { x: p.x ?? p.col * 16 + 8, y: p.y ?? p.row * 16 + 8, d: p.d ?? 0, s: p.sit ?? false });
         }
       }
       for (const [k, cid] of remotos) {
-        if (vistos.has(k)) continue;
+        if (vistos.has(k)) {
+          sumiuEm.delete(k);
+          continue;
+        }
+        // tolerancia de 6 s: uma queda curta de conexao ou o re-registro da presenca nao pode fazer o avatar piscar e sumir
+        const desde = sumiuEm.get(k) ?? Date.now();
+        sumiuEm.set(k, desde);
+        if (Date.now() - desde < 6000) continue;
+        sumiuEm.delete(k);
+        const as = assentoRemoto.get(k);
+        if (as) {
+          const st = officeState.seats.get(as);
+          if (st) st.assigned = false;
+          assentoRemoto.delete(k);
+        }
         officeState.removeAgent(cid);
         remotos.delete(k);
         ultimosP.delete(k);
+        posRemota.delete(k);
       }
       // reuniao: o CEO chama o time de um produto; todos veem esses agentes irem para a sala de reuniao
       meetingRemoto = ceoKey ? (estado[ceoKey]?.slice(-1)[0]?.meeting ?? null) : null;
@@ -203,12 +253,15 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
     };
     let ultimo = '';
     let ultimoTrack = 0;
+    let ultimaPos = '';
+    let ultimoPos = 0;
     const reafirmar = () => {
       ultimo = '';
     };
     window.addEventListener('online', reafirmar);
     document.addEventListener('visibilitychange', reafirmar);
     let t: ReturnType<typeof setInterval> | null = null;
+    let varre: ReturnType<typeof setInterval> | null = null;
     let v: ReturnType<typeof setInterval> | null = null;
     alternarMic.current = () => {
       if (voz.ligado) {
@@ -226,20 +279,34 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
       if (!officeState.characters.has(MY_ID)) return;
       clearInterval(iniciar);
       canal.on('broadcast', { event: 'rtc' }, ({ payload }) => void voz.sinal(payload as never));
+      canal.on('broadcast', { event: 'pos' }, ({ payload }) => {
+        const m = payload as { k: string; x: number; y: number; d: number; s: boolean };
+        if (m?.k && m.k !== meuKey) aplicarPos(m.k, { x: m.x, y: m.y, d: m.d, s: m.s });
+      });
       canal.on('presence', { event: 'sync' }, sync).subscribe((st) => {
         if (st !== 'SUBSCRIBED') return;
         sync();
+        varre = setInterval(sync, 2000);
         t = setInterval(() => {
           const eu = officeState.characters.get(MY_ID);
           if (!eu) return;
           officeState.factoryMeeting(isOwner() ? reuniaoRef.current : meetingRemoto);
-          const chave = eu.tileCol + ',' + eu.tileRow + ',' + voz.ligado + ',' + reuniaoRef.current;
-          // reafirma a presenca a cada 15 s: se a conexao caiu e voltou (aba em segundo plano, suspensao, rede), quem ficou parado some da lista dos outros ate mexer
-          if (chave === ultimo && Date.now() - ultimoTrack < 15_000) return;
+          const agora = Date.now();
+          const sit = eu.state === CharacterState.TYPE;
+          // posicao exata e direcao a ~10 Hz quando muda, e um batimento a cada 1,5 s parado: o mapa fica igual em todas as telas
+          const pos = Math.round(eu.x * 10) + ',' + Math.round(eu.y * 10) + ',' + eu.dir + ',' + sit;
+          if (pos !== ultimaPos || agora - ultimoPos > 1500) {
+            ultimaPos = pos;
+            ultimoPos = agora;
+            void canal.send({ type: 'broadcast', event: 'pos', payload: { k: meuKey, x: Math.round(eu.x * 10) / 10, y: Math.round(eu.y * 10) / 10, d: eu.dir, s: sit } });
+          }
+          // cadastro (nome, avatar, microfone, reuniao): so quando muda e a cada 15 s; tambem leva a posicao de entrada
+          const chave = voz.ligado + ',' + reuniaoRef.current;
+          if (chave === ultimo && agora - ultimoTrack < 15_000) return;
           ultimo = chave;
-          ultimoTrack = Date.now();
-          void canal.track({ name: me.name, palette: me.palette, kind: isOwner() ? 'ceo' : 'visitor', col: eu.tileCol, row: eu.tileRow, mic: voz.ligado, t: Date.now(), meeting: isOwner() ? reuniaoRef.current : null });
-        }, 600);
+          ultimoTrack = agora;
+          void canal.track({ name: me.name, palette: me.palette, kind: isOwner() ? 'ceo' : 'visitor', col: eu.tileCol, row: eu.tileRow, x: eu.x, y: eu.y, d: eu.dir, sit, mic: voz.ligado, t: agora, meeting: isOwner() ? reuniaoRef.current : null });
+        }, 100);
         // voz: quem esta a ate 4 tiles (e ainda ate 6 se ja conectado) e tambem esta com o microfone ligado
         v = setInterval(() => {
           const eu = officeState.characters.get(MY_ID);
@@ -261,6 +328,7 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
       window.removeEventListener('online', reafirmar);
       document.removeEventListener('visibilitychange', reafirmar);
       if (t) clearInterval(t);
+      if (varre) clearInterval(varre);
       if (v) clearInterval(v);
       voz.desligar();
       void sb.removeChannel(canal);
@@ -425,6 +493,7 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
         <span><b style={{ color: '#7AD1E0', border: '1px solid #7AD1E0', padding: '0 6px', borderRadius: 6 }}>PM</b> agente</span>
         <span><b style={{ background: '#FFC95C', color: '#08090C', padding: '1px 8px', borderRadius: 8 }}>CEO</b> pessoa (anel no chão)</span>
         <span><i style={{ color: '#6FCF97' }}>●</i> livre <i style={{ color: '#F2C94C' }}>●</i> aguardando <i style={{ color: '#EB5757' }}>●</i> ocupado</span>
+        <span><i style={{ color: '#6FCF97' }}>●</i> {[...officeState.characters.values()].filter((c) => c.isHuman && c.humanKind !== 'recep' && (c.remote || c.id === MY_ID)).length} online</span>
         <span>clique ou WASD para andar</span>
       </div>
       {perto && (
