@@ -6,11 +6,16 @@ import { createRoot } from 'react-dom/client';
 
 import App from './App.tsx';
 import { askEntry } from './factory/gate.js';
+import { mostrarCarregando } from './factory/loader.js';
 import { OWNER_EMAIL, me } from './factory/session.js';
 import { sb } from './factory/supabase.js';
 
 async function main() {
   const root = document.getElementById('root')!;
+  mostrarCarregando(root);
+  // Os assets (moveis, pisos, personagens) comecam a baixar ja, enquanto o login e a tela de entrada acontecem.
+  const assetsPronto = import('./browserMock.js').then((m) => m.initBrowserMock());
+  assetsPronto.catch(() => undefined);
   const { data } = await sb.auth.getSession();
   const demo = Boolean(import.meta.env.VITE_DEMO);
   const querVisitante = demo && new URLSearchParams(location.search).has('visitante');
@@ -50,10 +55,11 @@ async function main() {
     me.palette = palette ?? 0;
     root.innerHTML = '';
   }
+  mostrarCarregando(root, perfil.palette ?? me.palette ?? 0);
 
   // Assets do escritorio sao decodificados no proprio navegador (sem servidor).
-  const { initBrowserMock } = await import('./browserMock.js');
-  await initBrowserMock();
+  await assetsPronto;
+  root.innerHTML = '';
   createRoot(root).render(
     <StrictMode>
       <App />

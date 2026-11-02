@@ -495,6 +495,44 @@ patch("browserMock.ts", [
   ["fetch(`${base}assets/${assetIndex.defaultLayout}`)", "fetch(`${base}assets/${assetIndex.defaultLayout}?v=" + stamp + "`)"],
 ]);
 
+// 4d1) os PNGs de personagens, pisos, paredes e moveis eram baixados um de cada vez (cada um esperava o anterior): em paralelo, o cenario aparece em poucos segundos
+patch("browserMock.ts", [
+  [
+    `  const sprites: CharacterDirectionSprites[] = [];
+  for (const relPath of index.characters) {`,
+    `  const sprites: CharacterDirectionSprites[] = [];
+  const pngs = await Promise.all(index.characters.map((relPath) => decodePng(\`\${base}assets/\${getIndexedAssetPath('characters', relPath)}\`)));
+  for (const png of pngs) {`,
+  ],
+  [
+    `    const png = await decodePng(\`\${base}assets/\${getIndexedAssetPath('characters', relPath)}\`);
+    const byDir`,
+    `    const byDir`,
+  ],
+  [
+    `  for (const relPath of index.floors) {
+    const png = await decodePng(\`\${base}assets/\${getIndexedAssetPath('floors', relPath)}\`);`,
+    `  const pngsF = await Promise.all(index.floors.map((relPath) => decodePng(\`\${base}assets/\${getIndexedAssetPath('floors', relPath)}\`)));
+  for (const png of pngsF) {`,
+  ],
+  [
+    `  for (const relPath of index.walls) {
+    const png = await decodePng(\`\${base}assets/\${getIndexedAssetPath('walls', relPath)}\`);`,
+    `  const pngsW = await Promise.all(index.walls.map((relPath) => decodePng(\`\${base}assets/\${getIndexedAssetPath('walls', relPath)}\`)));
+  for (const png of pngsW) {`,
+  ],
+  [
+    `  for (const entry of catalog) {
+    const png = await decodePng(\`\${base}assets/\${entry.furniturePath}\`);
+    sprites[entry.id] = readSprite(png, entry.width, entry.height);
+  }`,
+    `  const pngsM = await Promise.all(catalog.map((entry) => decodePng(\`\${base}assets/\${entry.furniturePath}\`)));
+  catalog.forEach((entry, i) => {
+    sprites[entry.id] = readSprite(pngsM[i], entry.width, entry.height);
+  });`,
+  ],
+]);
+
 // 4d2) layout salvo pelo CEO (tabela factory_layout) vale no lugar do padrao gerado
 patch("browserMock.ts", [
   [
