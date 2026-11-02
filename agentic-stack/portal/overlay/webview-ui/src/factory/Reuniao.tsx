@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { SQUADS } from './config.js';
+import { type Entregas, entregas } from './changelog.js';
 import { type Issue, type Resultado, statusDoSquad } from './issues.js';
 import { getMeta } from './meta.js';
 
@@ -12,10 +13,22 @@ export function Reuniao({ game, onChange }: { game: string | null; onChange: (g:
   const [aberto, setAberto] = useState(false);
   const [nomes, setNomes] = useState<Record<string, string>>({});
   const [res, setRes] = useState<Resultado | null>(null);
+  const [notas, setNotas] = useState<Entregas | null>(null);
+  const [dias, setDias] = useState(14);
 
   useEffect(() => {
     for (const s of SQUADS) void getMeta(s.slug).then((m) => setNomes((n) => ({ ...n, [s.slug]: m.squad || s.slug })));
   }, []);
+
+  useEffect(() => {
+    if (!game) return;
+    let vivo = true;
+    setNotas(null);
+    void entregas(game).then((r) => vivo && setNotas(r));
+    return () => {
+      vivo = false;
+    };
+  }, [game]);
 
   useEffect(() => {
     if (!game) return;
@@ -40,21 +53,49 @@ export function Reuniao({ game, onChange }: { game: string | null; onChange: (g:
       </a>
     ));
 
-  let corpo: React.ReactNode = <div style={{ color: '#5C6678' }}>carregando o quadro…</div>;
-  if (res?.estado === 'sem_token') corpo = <div style={{ color: '#E6AC3F' }}>Quadro ainda não liberado: falta o token do GitHub no Supabase.</div>;
-  else if (res?.estado === 'erro') corpo = <div style={{ color: '#E6AC3F' }}>Não foi possível ler o quadro ({res.msg}).</div>;
-  else if (res?.estado === 'ok') {
-    const entregues = res.itens.filter((i) => ENTREGUE.test(i.etapa));
-    const emCurso = res.itens.filter((i) => !ENTREGUE.test(i.etapa));
-    corpo = (
-      <>
-        <div style={{ color: '#6FCF97', letterSpacing: '.1em', fontSize: 11, margin: '4px 0' }}>ENTREGUES ({entregues.length})</div>
-        {entregues.length ? lista(entregues) : <div style={{ color: '#5C6678' }}>nada entregue ainda</div>}
-        <div style={{ color: '#FFC95C', letterSpacing: '.1em', fontSize: 11, margin: '10px 0 4px' }}>EM CURSO ({emCurso.length})</div>
-        {emCurso.length ? lista(emCurso) : <div style={{ color: '#5C6678' }}>nada em curso</div>}
-      </>
-    );
-  }
+  const entregues = res?.estado === 'ok' ? res.itens.filter((i) => ENTREGUE.test(i.etapa)) : [];
+  const emCurso = res?.estado === 'ok' ? res.itens.filter((i) => !ENTREGUE.test(i.etapa)) : [];
+  const corte = Date.now() - dias * 86_400_000;
+  const recentes = notas?.estado === 'ok' ? notas.itens.filter((e) => Date.parse(e.data) >= corte) : [];
+  const titulo = (t: string, cor: string) => <div style={{ color: cor, letterSpacing: '.1em', fontSize: 11, margin: '10px 0 4px' }}>{t}</div>;
+
+  const bloco = (
+    <>
+      <div style={{ color: '#6FCF97', letterSpacing: '.1em', fontSize: 11, margin: '4px 0' }}>
+        ENTREGAS DOS ÚLTIMOS{' '}
+        {[7, 14, 30].map((d) => (
+          <button key={d} onClick={() => setDias(d)} style={{ background: 'none', border: 0, cursor: 'pointer', font: 'inherit', letterSpacing: 'inherit', color: d === dias ? '#FFC95C' : '#5C6678', textDecoration: d === dias ? 'underline' : 'none', padding: '0 3px' }}>
+            {d}
+          </button>
+        ))}
+        DIAS
+      </div>
+      {notas === null && <div style={{ color: '#5C6678' }}>lendo as release notes…</div>}
+      {notas?.estado === 'indisponivel' && (
+        <>
+          <div style={{ color: '#E6AC3F' }}>Release notes (CHANGELOG.md) não acessíveis: o repo é privado ou não tem o arquivo. Usando a etapa final do quadro.</div>
+          {entregues.length ? lista(entregues) : <div style={{ color: '#5C6678' }}>nada entregue ainda</div>}
+        </>
+      )}
+      {notas?.estado === 'ok' &&
+        (recentes.length ? (
+          recentes.map((e, k) => (
+            <div key={k} style={{ padding: '4px 0', borderTop: '1px solid #262E3A', color: '#EEF1F6' }}>
+              <span style={{ color: '#7AD1E0' }}>{/^d/.test(e.versao) ? 'v' + e.versao : e.versao}</span> {e.titulo}
+              <span style={{ display: 'block', color: '#5C6678', fontSize: 11 }}>{e.data.split('-').reverse().join('/')}</span>
+            </div>
+          ))
+        ) : (
+          <div style={{ color: '#5C6678' }}>nenhuma entrega registrada nos últimos {dias} dias</div>
+        ))}
+      {titulo('EM CURSO NO QUADRO' + (res?.estado === 'ok' ? ' (' + emCurso.length + ')' : ''), '#FFC95C')}
+      {res === null && <div style={{ color: '#5C6678' }}>carregando o quadro…</div>}
+      {res?.estado === 'sem_token' && <div style={{ color: '#E6AC3F' }}>Quadro ainda não liberado: falta o token do GitHub no Supabase.</div>}
+      {res?.estado === 'erro' && <div style={{ color: '#E6AC3F' }}>Não foi possível ler o quadro ({res.msg}).</div>}
+      {res?.estado === 'ok' && (emCurso.length ? lista(emCurso) : <div style={{ color: '#5C6678' }}>nada em curso</div>)}
+    </>
+  );
+  const corpo = bloco;
 
   return (
     <>
@@ -80,7 +121,7 @@ export function Reuniao({ game, onChange }: { game: string | null; onChange: (g:
       {game && (
         <div style={{ position: 'fixed', left: 200, top: 84, width: 340, maxHeight: '60vh', overflow: 'auto', zIndex: 26, background: '#0F1318', border: '1px solid #E6AC3F', padding: 12, font: '13px ' + MONO, color: '#A9B3C4' }}>
           <div style={{ color: '#FFC95C', letterSpacing: '.12em', fontSize: 11 }}>REUNIÃO · {(nomes[game] ?? game).toUpperCase()}</div>
-          <div style={{ fontSize: 11, color: '#5C6678', marginBottom: 6 }}>o time foi chamado para a sala de reunião; status do quadro abaixo</div>
+          <div style={{ fontSize: 11, color: '#5C6678', marginBottom: 6 }}>o time foi chamado para a sala de reunião; entregas pelas release notes do repo</div>
           {corpo}
         </div>
       )}
