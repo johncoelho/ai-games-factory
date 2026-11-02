@@ -1,4 +1,5 @@
 // Conversa por voz entre humanos proximos: audio direto entre navegadores (WebRTC); o Supabase Realtime so leva os sinais de conexao.
+// Quem esta perto fica conectado mesmo sem microfone (so ouve); ligar o microfone apenas poe a voz na linha (replaceTrack), sem renegociar.
 export interface Sinal {
   from: string;
   to: string;
@@ -8,9 +9,22 @@ export interface Sinal {
 
 interface Par {
   pc: RTCPeerConnection;
+  sender: RTCRtpSender | null;
   audio: HTMLAudioElement;
   fila: RTCIceCandidateInit[];
 }
+
+// navegadores bloqueiam audio sem gesto do usuario: no primeiro clique/tecla, libera os que ficaram esperando
+let liberado = false;
+const liberar = (pares: () => Iterable<Par>) => {
+  if (liberado) return;
+  liberado = true;
+  const tocar = () => {
+    for (const p of pares()) void p.audio.play().catch(() => undefined);
+  };
+  document.addEventListener('pointerdown', tocar, { capture: true });
+  document.addEventListener('keydown', tocar, { capture: true });
+};
 
 const ICE = [{ urls: 'stun:stun.l.google.com:19302' }];
 
@@ -24,6 +38,7 @@ export class Voz {
   constructor(meu: string, enviar: (s: Sinal) => void) {
     this.meu = meu;
     this.enviar = enviar;
+    liberar(() => this.pares.values());
   }
 
   get ligado(): boolean {
@@ -43,6 +58,7 @@ export class Voz {
       } else {
         this.local = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
       }
+      this.colocarFaixa();
       return true;
     } catch {
       this.local = null;
@@ -53,7 +69,23 @@ export class Voz {
   desligar(): void {
     this.local?.getTracks().forEach((t) => t.stop());
     this.local = null;
+    for (const par of this.pares.values()) void par.sender?.replaceTrack(null).catch(() => undefined);
+  }
+
+  // encerra tudo (sair do escritorio)
+  encerrar(): void {
+    this.desligar();
     for (const k of [...this.pares.keys()]) this.fechar(k);
+  }
+
+  private colocarFaixa(): void {
+    const faixa = this.local?.getAudioTracks()[0] ?? null;
+    for (const par of this.pares.values()) void par.sender?.replaceTrack(faixa).catch(() => undefined);
+  }
+
+  // para testes e diagnostico
+  estado(): Array<{ com: string; conexao: string; recebendo: boolean; faixaMuda: boolean }> {
+    return [...this.pares.entries()].map(([k, p]) => ({ com: k, conexao: p.pc.connectionState, recebendo: !!p.audio.srcObject && !p.audio.paused, faixaMuda: (p.audio.srcObject as MediaStream | null)?.getTracks()[0]?.muted ?? true }));
   }
 
   conectados(): string[] {
@@ -62,23 +94,26 @@ export class Voz {
 
   // perto: quem esta ao alcance (com microfone ligado) e a distancia em tiles; o volume cai com a distancia.
   atualizar(perto: Map<string, number>): void {
-    if (!this.local) return;
     for (const [k, d] of perto) {
       const par = this.pares.get(k);
-      if (par) par.audio.volume = Math.max(0.15, Math.min(1, 1 - d / 8));
+      if (par) par.audio.volume = Math.max(0.15, Math.min(1, 1 - d / 12));
       else if (this.meu < k) void this.chamar(k);
     }
     for (const k of [...this.pares.keys()]) if (!perto.has(k)) this.fechar(k);
   }
 
-  private criar(k: string): Par {
+  private criar(k: string, comoQuemChama: boolean): Par {
     const pc = new RTCPeerConnection({ iceServers: ICE });
     const audio = new Audio();
     audio.autoplay = true;
-    const par: Par = { pc, audio, fila: [] };
-    this.local?.getTracks().forEach((t) => pc.addTrack(t, this.local!));
+    const par: Par = { pc, sender: null, fila: [], audio };
+    if (comoQuemChama) {
+      const tr = pc.addTransceiver('audio', { direction: 'sendrecv' });
+      par.sender = tr.sender;
+      void tr.sender.replaceTrack(this.local?.getAudioTracks()[0] ?? null).catch(() => undefined);
+    }
     pc.ontrack = (e) => {
-      audio.srcObject = e.streams[0];
+      audio.srcObject = new MediaStream([e.track]);
       void audio.play().catch(() => undefined);
     };
     pc.onicecandidate = (e) => {
@@ -92,19 +127,25 @@ export class Voz {
   }
 
   private async chamar(k: string): Promise<void> {
-    const par = this.criar(k);
+    const par = this.criar(k, true);
     const offer = await par.pc.createOffer();
     await par.pc.setLocalDescription(offer);
     this.enviar({ from: this.meu, to: k, kind: 'offer', data: offer });
   }
 
   async sinal(s: Sinal): Promise<void> {
-    if (s.to !== this.meu || !this.local) return;
+    if (s.to !== this.meu) return;
     let par = this.pares.get(s.from);
     if (s.kind === 'offer') {
       if (par) this.fechar(s.from);
-      par = this.criar(s.from);
+      par = this.criar(s.from, false);
       await par.pc.setRemoteDescription(s.data as RTCSessionDescriptionInit);
+      const tr = par.pc.getTransceivers()[0];
+      if (tr) {
+        tr.direction = 'sendrecv';
+        par.sender = tr.sender;
+        void tr.sender.replaceTrack(this.local?.getAudioTracks()[0] ?? null).catch(() => undefined);
+      }
       const answer = await par.pc.createAnswer();
       await par.pc.setLocalDescription(answer);
       this.enviar({ from: this.meu, to: s.from, kind: 'answer', data: answer });
