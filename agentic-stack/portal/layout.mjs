@@ -1,6 +1,6 @@
-// Gera o mapa do escritorio da fabrica: 10 salas em 2 fileiras, ligadas por um corredor.
-// Fileira de cima: 4 salas de time (Naval Battle, Agentic Stack, Domínio/Monopoly, Marketing) + lazer 3.
-// Fileira de baixo: lazer 1, recepcao, sala do CEO, lazer 2, lazer 4.
+// Gera o mapa do escritorio da fabrica: 12 salas em 2 fileiras, ligadas por um corredor.
+// Fileira de cima: 4 salas de time (Naval Battle, Agentic Stack, Domínio/Monopoly, Marketing), sala de reuniao e cafe.
+// Fileira de baixo: sala de TV, recepcao, sala do CEO, bar e sinuca, sala de jogos e banheiro.
 // Devolve o layout do Pixel Agents e a lista de salas (usada para escolher mesa e sofa de cada agente).
 
 const VOID = 255;
@@ -10,6 +10,9 @@ const WOOD = { tile: 7, color: { h: 25, s: 48, b: -43, c: -88 } };
 const BLUE = { tile: 1, color: { h: 209, s: 39, b: -25, c: -80 } };
 const HALL = { tile: 3, color: { h: 215, s: 18, b: -38, c: -55 } };
 const MARBLE = { tile: 2, color: { h: 35, s: 18, b: -22, c: -45 } };
+const CARPET = { tile: 1, color: { h: 232, s: 38, b: -55, c: -62 } };
+const ARCADE_FLOOR = { tile: 1, color: { h: 272, s: 36, b: -50, c: -66 } };
+const TILE_WC = { tile: 2, color: { h: 190, s: 22, b: -10, c: -40 } };
 const CEO_FLOOR = { tile: 6, color: { h: 18, s: 55, b: -62, c: -75 } };
 
 export const SQUADS_MAPA = [
@@ -20,7 +23,7 @@ export const SQUADS_MAPA = [
 ];
 
 export function buildLayout() {
-  const COLS = 51; // 5 salas de 9 + 6 paredes
+  const COLS = 61; // 6 salas de 9 + 7 paredes
   const ROWS = 29;
   const TOP = 3; // primeira linha de piso da fileira de cima
   const H = 10; // altura do piso das salas
@@ -48,18 +51,19 @@ export function buildLayout() {
 
   // pisos
   const colX = (i) => 1 + 10 * i;
-  for (let i = 0; i < 5; i++) {
-    floor(colX(i), TOP, 9, H, i === 4 ? BLUE : WOOD); // fileira de cima (lazer 3 e a 5a sala)
+  for (let i = 0; i < 6; i++) {
+    floor(colX(i), TOP, 9, H, i === 4 ? BLUE : i === 5 ? MARBLE : WOOD); // fileira de cima (reuniao e cafe nas duas ultimas)
   }
-  floor(colX(0), BOT, 9, H, BLUE); // lazer 1
+  floor(colX(0), BOT, 9, H, CARPET); // sala de TV
   floor(colX(1), BOT, 9, H, MARBLE); // recepcao
   floor(colX(2), BOT, 9, H, CEO_FLOOR); // CEO
-  floor(colX(3), BOT, 9, H, BLUE); // lazer 2
-  floor(colX(4), BOT, 9, H, BLUE); // lazer 4
-  floor(1, HALL_Y, 49, 3, HALL); // corredor
+  floor(colX(3), BOT, 9, H, CEO_FLOOR); // bar e sinuca
+  floor(colX(4), BOT, 9, H, ARCADE_FLOOR); // jogos
+  floor(colX(5), BOT, 9, H, TILE_WC); // banheiro
+  floor(1, HALL_Y, 59, 3, HALL); // corredor
 
   // portas da fileira de baixo: 3 tiles de largura atravessando o vazio (linha 16) e a parede (linha 17)
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 6; i++) {
     const x = colX(i) + 3;
     for (let c = x; c < x + 3; c++) for (const r of [16, 17]) {
       tiles[at(c, r)] = HALL.tile;
@@ -89,31 +93,95 @@ export function buildLayout() {
     area(label, '#FFC95C', x + 1, y + 4, 7);
     rooms.push({ id: slug, type: 'team', label, x, y, w: 9, h: H });
   };
-  const lounge = (col, row, id, label) => {
+  // sala de TV: muitos sofas virados para a TV, no fundo da sala (a porta fica em cima)
+  const salaTV = (col, row, id, label) => {
     const x = colX(col), y = row;
     const p = (type, dx, dy) => add(type, x + dx, y + dy);
-    p('PLANT_2', 0, -1);
-    // fileira de baixo: o meio (dx 3 a 5) e a porta, entao os quadros ficam dos lados
-    if (row === BOT) { p('SMALL_PAINTING', 1, -2); p('SMALL_PAINTING_2', 2, -2); p('LARGE_PAINTING', 6, -2); }
-    else { p('SMALL_PAINTING', 1, -2); p('LARGE_PAINTING', 3, -2); p('SMALL_PAINTING_2', 6, -2); }
-    p('PLANT', 8, -1);
-    p('COFFEE_TABLE', 4, 3); p('SOFA_SIDE', 3, 3); p('SOFA_FRONT', 4, 2); p('SOFA_BACK', 4, 5); p('SOFA_SIDE:left', 6, 3); p('COFFEE', 4, 4);
-    p('WOODEN_BENCH', 1, 1); p('WOODEN_BENCH', 7, 1); p('WOODEN_BENCH', 1, 8); p('WOODEN_BENCH', 7, 8);
-    p('POT', 0, 9); p('POT', 8, 9);
-    p('CACTUS', 0, 5); p('CACTUS', 8, 5);
-    if (row !== BOT) p('GOLD_FRAME_TEAL', 5, -2);
-    area(label, '#7AD1E0', x + 1, y, 7);
+    p('SMALL_PAINTING', 1, -2); p('SMALL_PAINTING_2', 2, -2); p('LARGE_PAINTING', 6, -2);
+    p('PLANT_2', 0, -1); p('PLANT', 8, -1);
+    for (const dy of [2, 5]) for (const dx of [0, 2, 5, 7]) p('SOFA_FRONT', dx, dy);
+    p('TV_STAND', 3, 8);
+    p('COFFEE_TABLE', 0, 7); p('POT', 8, 8);
+    area(label, '#7AD1E0', x + 1, y + 4, 7);
     rooms.push({ id, type: 'lounge', label, x, y, w: 9, h: H });
+  };
+  // bar e sinuca
+  const salaBar = (col, row, id, label) => {
+    const x = colX(col), y = row;
+    const p = (type, dx, dy) => add(type, x + dx, y + dy);
+    p('BAR_SHELF', 0, -2); p('BAR_SHELF', 6, -2); p('MIRROR', 2, -2); p('GOLD_FRAME_ORANGE', 8, -2);
+    p('BAR_COUNTER', 0, 2);
+    for (const dx of [0, 1, 2]) p('WOODEN_BENCH', dx, 4);
+    p('POOL_TABLE', 4, 5);
+    p('WOODEN_BENCH', 3, 5); p('WOODEN_BENCH', 3, 6); p('WOODEN_BENCH', 7, 5); p('WOODEN_BENCH', 7, 6);
+    p('WOODEN_BENCH', 5, 4); p('WOODEN_BENCH', 5, 7);
+    p('SOFA_FRONT', 0, 7); p('PLANT', 8, 1); p('CACTUS', 8, 9); p('POT', 0, 9); p('POT', 4, 9);
+    area(label, '#7AD1E0', x + 1, y + 1, 7);
+    rooms.push({ id, type: 'lounge', label, x, y, w: 9, h: H });
+  };
+  // jogos: fliperama, pebolim e xadrez
+  const salaJogos = (col, row, id, label) => {
+    const x = colX(col), y = row;
+    const p = (type, dx, dy) => add(type, x + dx, y + dy);
+    p('GOLD_FRAME_TEAL', 1, -2); p('GOLD_FRAME_GREEN', 7, -2); p('SMALL_PAINTING', 2, -2); p('SMALL_PAINTING_2', 6, -2);
+    for (const [dx, t] of [[0, 'ARCADE_A'], [1, 'ARCADE_B'], [2, 'ARCADE_A'], [6, 'ARCADE_B'], [7, 'ARCADE_A'], [8, 'ARCADE_B']]) {
+      p(t, dx, 0); p('WOODEN_BENCH', dx, 2);
+    }
+    p('FOOSBALL', 1, 4); p('WOODEN_BENCH', 0, 4); p('WOODEN_BENCH', 3, 5);
+    p('CHESS_TABLE', 6, 5); p('WOODEN_BENCH', 5, 5); p('WOODEN_BENCH', 7, 5);
+    p('CHESS_TABLE', 6, 8); p('WOODEN_BENCH', 5, 8); p('WOODEN_BENCH', 7, 8);
+    p('SOFA_FRONT', 0, 8); p('PLANT', 8, 4); p('POT', 3, 9); p('CACTUS', 0, 7);
+    area(label, '#7AD1E0', x + 1, y + 3, 7);
+    rooms.push({ id, type: 'lounge', label, x, y, w: 9, h: H });
+  };
+  // sala de reuniao: mesa grande, quadro de status e quadros brancos
+  const reuniao = (col, row, id, label) => {
+    const x = colX(col), y = row;
+    const p = (type, dx, dy) => add(type, x + dx, y + dy);
+    p('WHITEBOARD', 0, -2); p('CLOCK', 2, -2); p('STATUS_BOARD', 3, -2); p('CLOCK', 6, -2); p('WHITEBOARD', 7, -2);
+    p('MEETING_TABLE', 2, 3);
+    for (let dx = 2; dx <= 6; dx++) { p('CUSHIONED_CHAIR_FRONT', dx, 2); p('CUSHIONED_CHAIR_BACK', dx, 6); }
+    p('CUSHIONED_CHAIR_SIDE', 1, 4); p('CUSHIONED_CHAIR_SIDE:left', 7, 4);
+    p('PLANT', 0, 0); p('PLANT_2', 8, 0); p('COFFEE', 0, 8); p('BIN', 8, 9); p('CACTUS', 0, 5);
+    area(label, '#FFC95C', x + 1, y + 1, 7);
+    rooms.push({ id, type: 'meeting', label, x, y, w: 9, h: H });
+  };
+  // cafe e lanche
+  const cafe = (col, row, id, label) => {
+    const x = colX(col), y = row;
+    const p = (type, dx, dy) => add(type, x + dx, y + dy);
+    p('GOLD_FRAME_ORANGE', 1, -2); p('CLOCK', 4, -2); p('GOLD_FRAME_TEAL', 7, -2);
+    p('SNACK_COUNTER', 0, 1);
+    for (const dx of [0, 1, 2]) p('WOODEN_BENCH', dx, 3);
+    p('COFFEE_MACHINE', 5, 0); p('VENDING', 6, 0); p('FRIDGE', 7, 0);
+    p('SMALL_TABLE_FRONT', 1, 5); p('SMALL_TABLE_FRONT', 5, 5);
+    for (const dy of [5, 6]) for (const dx of [0, 3, 4, 7]) p('WOODEN_BENCH', dx, dy);
+    p('POT', 0, 9); p('POT', 8, 9); p('CACTUS', 4, 9);
+    area(label, '#E6AC3F', x + 1, y + 4, 7);
+    rooms.push({ id, type: 'cafe', label, x, y, w: 9, h: H });
+  };
+  // banheiro: pias na parede de cima, boxes com vaso no fundo
+  const banheiro = (col, row, id, label) => {
+    const x = colX(col), y = row;
+    const p = (type, dx, dy) => add(type, x + dx, y + dy);
+    p('SINK', 0, -2); p('SINK', 1, -2); p('MIRROR', 2, -2); p('MIRROR', 6, -2); p('SINK', 7, -2); p('SINK', 8, -2);
+    for (const dx of [0, 2, 6, 8]) p('STALL', dx, 0);
+    for (const dx of [1, 3, 5, 7]) p('TOILET', dx, 1);
+    p('BIN', 0, 8); p('PLANT', 8, 7); p('POT', 4, 9); p('POT', 0, 9);
+    area(label, '#7AD1E0', x + 1, y + 4, 7);
+    rooms.push({ id, type: 'wc', label, x, y, w: 9, h: H });
   };
 
   team(0, SQUADS_MAPA[0].slug, SQUADS_MAPA[0].label);
   team(1, SQUADS_MAPA[1].slug, SQUADS_MAPA[1].label);
   team(2, SQUADS_MAPA[2].slug, SQUADS_MAPA[2].label);
   team(3, SQUADS_MAPA[3].slug, SQUADS_MAPA[3].label);
-  lounge(4, TOP, 'lazer-3', 'LAZER 3');
-  lounge(0, BOT, 'lazer-1', 'LAZER 1');
-  lounge(3, BOT, 'lazer-2', 'LAZER 2');
-  lounge(4, BOT, 'lazer-4', 'LAZER 4');
+  reuniao(4, TOP, 'reuniao', 'SALA DE REUNIÃO');
+  cafe(5, TOP, 'cafe', 'CAFÉ E LANCHE');
+  salaTV(0, BOT, 'lazer-tv', 'SALA DE TV');
+  salaBar(3, BOT, 'lazer-bar', 'BAR E SINUCA');
+  salaJogos(4, BOT, 'lazer-jogos', 'SALA DE JOGOS');
+  banheiro(5, BOT, 'banheiro', 'BANHEIRO');
 
   // recepcao
   {
@@ -134,7 +202,7 @@ export function buildLayout() {
     p('DESK_FRONT', 3, 2); p('PC_FRONT_OFF', 4, 2); p('CUSHIONED_CHAIR_BACK', 4, 4);
     p('LARGE_PLANT', 0, 1); p('LARGE_PLANT', 7, 1);
     p('SOFA_BACK', 1, 8); p('SOFA_BACK', 6, 8); p('COFFEE_TABLE', 4, 7); p('COFFEE', 4, 8);
-    p('POT', 8, 6); p('GRAND_PIANO', 6, 4); p('CANDELABRA', 2, 3); p('CANDELABRA', 6, 2);
+    p('POT', 8, 9); p('GRAND_PIANO', 6, 4); p('CANDELABRA', 2, 4); p('CANDELABRA', 6, 2);
     area('CEO', '#FFC95C', x + 1, y + 6, 7);
     rooms.push({ id: 'ceo', type: 'ceo', label: 'CEO', x, y, w: 9, h: H, seat: { col: x + 4, row: y + 4 } });
   }

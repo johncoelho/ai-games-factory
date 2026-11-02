@@ -4,7 +4,7 @@ import { sb } from './supabase.js';
 
 export type Entrada = { kind: 'visitor'; name: string; palette: number };
 
-const CHARS = [0, 1, 2, 3, 4, 5];
+const CHARS = Array.from({ length: 30 }, (_, i) => i);
 
 // Sair: encerra a sessao (se houver), esquece o perfil guardado e volta para a tela de entrada.
 export function sair(): void {
@@ -32,7 +32,7 @@ export function askEntry(root: HTMLElement, logado?: { nome: string }): Promise<
       <div style="font:11px ui-monospace,monospace;letter-spacing:.2em;color:#5C6678">BEM-VINDO(A) À</div>
       <div style="font-weight:700;letter-spacing:.14em;font-size:20px;color:#FFC95C">AI GAMES FACTORY</div>
       <div style="font:13px ui-monospace,monospace;color:#A9B3C4">Escolha seu avatar e seu nome. Você entra pela recepção e pode visitar as salas e ver os times trabalhando.</div>
-      <div id="av" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"></div>
+      <div id="av" style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;max-height:232px;overflow-y:auto;padding:2px"></div>
       <input id="n" maxlength="16" placeholder="seu nome" required value="${(guardado.name ?? logado?.nome ?? '').replace(/"/g, '')}"
         style="background:#08090C;border:1px solid #262E3A;color:#EEF1F6;font:15px ui-monospace,monospace;padding:11px">
       ${logado ? '' : `<input id="e" type="email" maxlength="80" placeholder="e-mail (opcional)" autocomplete="email"
@@ -51,9 +51,9 @@ export function askEntry(root: HTMLElement, logado?: { nome: string }): Promise<
     for (const i of CHARS) {
       const b = document.createElement('button');
       b.type = 'button';
-      b.style.cssText = `width:62px;height:104px;padding:0;cursor:pointer;background:#08090C;border:2px solid ${i === palette ? '#FFC95C' : '#262E3A'}`;
+      b.style.cssText = `width:44px;height:72px;padding:0;cursor:pointer;background:#08090C;border:2px solid ${i === palette ? '#FFC95C' : '#262E3A'}`;
       const sp = document.createElement('div');
-      sp.style.cssText = `width:48px;height:96px;margin:2px auto;image-rendering:pixelated;background:url(./assets/characters/char_${i}.png) 0 0/${112 * 3}px ${96 * 3}px no-repeat`;
+      sp.style.cssText = `width:32px;height:64px;margin:2px auto;image-rendering:pixelated;background:url(./assets/characters/char_${i}.png) 0 0/${112 * 2}px ${96 * 2}px no-repeat`;
       b.appendChild(sp);
       b.onclick = () => {
         palette = i;

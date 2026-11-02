@@ -27,6 +27,9 @@ grep -q 'if (isBrowserRuntime) {' webview-ui/src/App.tsx || { echo "patch do App
 
 (cd webview-ui && npm run build 2>&1 | grep -E "error|built" | head -30)
 
+# todo assento e todo piso livre precisam estar ligados ao corredor (senao agentes ficam presos)
+node "$HERE/tools/check-mapa.mjs" dist/webview/assets/furniture-catalog.json || { echo "mapa com area inacessivel"; exit 1; }
+
 rm -rf "$OUT"
 mkdir -p "$OUT"
 cp -r dist/webview/. "$OUT/"
@@ -35,6 +38,7 @@ cp LICENSE "$OUT/LICENSE-pixel-agents.txt"
 cat > "$OUT/CREDITS.txt" <<'EOF'
 Escritorio visual: Pixel Agents (https://github.com/pablodelucca/pixel-agents), licenca MIT (LICENSE-pixel-agents.txt).
 Moveis do CEO (piano, candelabro, molduras, espelho): Roguelike Indoors, de Kenney (https://kenney.nl), CC0.
+TV, fliperama, pebolim, xadrez, bar, sinuca, mesa de reuniao, cafe, banheiro e variantes de avatar: arte original da fabrica (portal/tools).
 Personagens baseados em Metro City, de JIK-A-4 (https://jik-a-4.itch.io/metrocity-free-topdown-character-pack).
 EOF
 echo "pronto: $OUT"

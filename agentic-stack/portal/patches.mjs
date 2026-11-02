@@ -33,7 +33,13 @@ patch("types.ts", [
     `  seatId: string | null;
   /** Fabrica: assento do computador (trabalhando) e da sala de estar (sem demanda). seatId aponta para o atual. */
   deskSeatId?: string | null;
-  loungeSeatId?: string | null;`,
+  loungeSeatId?: string | null;
+  /** Fabrica: pausa recorrente (cafe, banheiro): assento da visita, quanto falta para voltar e quanto falta para a proxima. */
+  visitSeatId?: string | null;
+  visitTimer?: number;
+  nextVisit?: number;
+  /** Fabrica: chamado para a sala de reuniao pelo CEO (fica la ate a reuniao acabar, mesmo trabalhando). */
+  inMeeting?: boolean;`,
   ],
 ]);
 
@@ -125,6 +131,69 @@ export class OfficeState {`,
     }
   }
 
+  /** Fabrica: pausas recorrentes. Quem esta descansando levanta de vez em quando e vai ao cafe ou ao banheiro, depois volta ao seu lugar. */
+  private visitSeat(tipo: string): string | null {
+    const roomOf = (col: number, row: number) =>
+      ROOMS.find((r) => col >= r.x && col < r.x + r.w && row >= r.y && row < r.y + r.h);
+    const livres: string[] = [];
+    for (const [sid, s] of this.seats) {
+      if (s.assigned || !this.isReachable(s.seatCol, s.seatRow)) continue;
+      if (roomOf(s.seatCol, s.seatRow)?.type === tipo) livres.push(sid);
+    }
+    return livres.length > 0 ? livres[Math.floor(Math.random() * livres.length)] : null;
+  }
+
+  private factoryEndVisit(ch: Character): void {
+    if (ch.visitSeatId) {
+      const s = this.seats.get(ch.visitSeatId);
+      if (s) s.assigned = false;
+    }
+    ch.visitSeatId = null;
+    ch.inMeeting = false;
+    ch.seatId = ch.isActive && ch.deskSeatId ? ch.deskSeatId : (ch.loungeSeatId ?? ch.seatId);
+  }
+
+  /** Fabrica: reuniao. Chama os agentes do squad para a sala de reuniao (null encerra e todos voltam ao lugar). Idempotente: agentes que chegam depois tambem sao chamados. */
+  factoryMeeting(game: string | null): void {
+    for (const ch of this.characters.values()) {
+      if (ch.isHuman || !ch.loungeSeatId) continue;
+      if (ch.inMeeting && ch.directoryName !== game) this.factoryEndVisit(ch);
+      if (!game || ch.inMeeting || ch.directoryName !== game) continue;
+      if (ch.visitSeatId) this.factoryEndVisit(ch);
+      const alvo = this.visitSeat('meeting');
+      if (!alvo) continue;
+      this.seats.get(alvo)!.assigned = true;
+      ch.visitSeatId = alvo;
+      ch.inMeeting = true;
+      ch.seatId = alvo;
+    }
+  }
+
+  private factoryVisits(dt: number): void {
+    for (const ch of this.characters.values()) {
+      if (ch.isHuman || !ch.loungeSeatId) continue;
+      if (ch.inMeeting) continue;
+      if (ch.visitSeatId) {
+        ch.visitTimer = (ch.visitTimer ?? 0) - dt;
+        if (ch.visitTimer <= 0 || ch.isActive) this.factoryEndVisit(ch);
+        continue;
+      }
+      if (ch.isActive || ch.seatId !== ch.loungeSeatId) continue;
+      const seat = this.seats.get(ch.loungeSeatId);
+      if (!seat || ch.tileCol !== seat.seatCol || ch.tileRow !== seat.seatRow) continue;
+      ch.nextVisit = (ch.nextVisit ?? 30 + Math.random() * 120) - dt;
+      if (ch.nextVisit > 0) continue;
+      ch.nextVisit = 100 + Math.random() * 160;
+      const banheiro = Math.random() < 0.3;
+      const alvo = this.visitSeat(banheiro ? 'wc' : 'cafe');
+      if (!alvo) continue;
+      this.seats.get(alvo)!.assigned = true;
+      ch.visitSeatId = alvo;
+      ch.visitTimer = banheiro ? 14 + Math.random() * 8 : 28 + Math.random() * 20;
+      ch.seatId = alvo;
+    }
+  }
+
   private pickSeat(lounge: boolean, game?: string): string | null {
     const home = game ? ROOMS.find((r) => r.id === game) : undefined;
     const roomOf = (col: number, row: number) =>
@@ -155,6 +224,15 @@ export class OfficeState {`,
 
   addAgent(
     id: number,`,
+  ],
+  [
+    `    const toDelete: number[] = [];
+    for (const ch of this.characters.values()) {
+      const effect = advanceMatrixEffect(ch, dt);`,
+    `    this.factoryVisits(dt);
+    const toDelete: number[] = [];
+    for (const ch of this.characters.values()) {
+      const effect = advanceMatrixEffect(ch, dt);`,
   ],
   [
     `    let ch: Character;
@@ -188,7 +266,8 @@ export class OfficeState {`,
           if (old) old.assigned = false;
           ch.deskSeatId = null;
         }
-        ch.seatId = active && ch.deskSeatId ? ch.deskSeatId : ch.loungeSeatId;
+        if (ch.visitSeatId && !ch.inMeeting) this.factoryEndVisit(ch);
+        ch.seatId = ch.inMeeting && ch.visitSeatId ? ch.visitSeatId : active && ch.deskSeatId ? ch.deskSeatId : ch.loungeSeatId;
       }
       if (!active) {`,
   ],
@@ -229,7 +308,7 @@ patch("engine/characters.ts", [
         if (ch.seatTimer > 0) {`,
     `      if (!ch.isActive) {
         // Fabrica: sentado na sala de estar, fica ali (sem animar de digitar).
-        const sofa = ch.loungeSeatId && ch.seatId === ch.loungeSeatId ? seats.get(ch.seatId) : undefined;
+        const sofa = ch.seatId && (ch.seatId === ch.loungeSeatId || ch.seatId === ch.visitSeatId) ? seats.get(ch.seatId) : undefined;
         if (sofa && ch.tileCol === sofa.seatCol && ch.tileRow === sofa.seatRow) {
           ch.dir = sofa.facingDir;
           ch.frame = 0;
@@ -241,7 +320,7 @@ patch("engine/characters.ts", [
     `      // Countdown wander timer
       ch.wanderTimer -= dt;`,
     `      // Fabrica: sem demanda, vai direto para o assento da sala de estar em vez de vagar.
-      if (ch.loungeSeatId && ch.seatId === ch.loungeSeatId) {
+      if (ch.seatId && (ch.seatId === ch.loungeSeatId || ch.seatId === ch.visitSeatId)) {
         const sofa = seats.get(ch.seatId);
         if (sofa) {
           const path = findPath(ch.tileCol, ch.tileRow, sofa.seatCol, sofa.seatRow, tileMap, blockedTiles);

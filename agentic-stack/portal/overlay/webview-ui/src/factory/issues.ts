@@ -51,3 +51,20 @@ export async function issuesDoPapel(game: string, role: string): Promise<Resulta
   if (!Array.isArray(q)) return q;
   return { estado: 'ok', etapas, itens: q.filter((i) => etapas.includes(i.etapa)) };
 }
+
+// Status do quadro inteiro do squad (reuniao): so o dono le, com o mesmo cache curto.
+export async function statusDoSquad(game: string): Promise<Resultado> {
+  if (import.meta.env.VITE_DEMO) {
+    return {
+      estado: 'ok',
+      etapas: [],
+      itens: [
+        { numero: 64, titulo: 'Sair da conta deve limpar nome, avatar, frota e XP', url: '#', etapa: 'Publicado' },
+        { numero: 62, titulo: 'Fila de partidas online', url: '#', etapa: 'Em andamento' },
+      ],
+    };
+  }
+  const q = await quadro(game);
+  if (!Array.isArray(q)) return q;
+  return { estado: 'ok', etapas: [], itens: q };
+}

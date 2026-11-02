@@ -6,6 +6,7 @@ import { overlayProjection } from '../office/projection.js';
 import { CharacterState } from '../office/types.js';
 import { sair } from './gate.js';
 import { Recados } from './Recados.js';
+import { Reuniao } from './Reuniao.js';
 import { registry } from './registry.js';
 import { sb } from './supabase.js';
 import { roleLabel } from './roles.js';
@@ -36,6 +37,8 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
   const [mic, setMic] = useState(false);
   const [micMsg, setMicMsg] = useState('');
   const alternarMic = useRef<() => void>(() => undefined);
+  const [reuniao, setReuniao] = useState<string | null>(null);
+  const reuniaoRef = useRef<string | null>(null);
 
   // quadro a quadro: reposiciona as etiquetas
   useEffect(() => {
@@ -105,7 +108,7 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
 
   // presenca: CEO e visitantes online se enxergam (canal publico do Supabase Realtime). Sem o CEO online, um avatar dele fica sentado na sala.
   useEffect(() => {
-    type P = { name: string; palette: number; kind: 'ceo' | 'visitor'; col: number; row: number; mic?: boolean; t?: number };
+    type P = { name: string; palette: number; kind: 'ceo' | 'visitor'; col: number; row: number; mic?: boolean; t?: number; meeting?: string | null };
     const meuKey = Math.random().toString(36).slice(2);
     const canal = sb.channel('factory-presence', { config: { presence: { key: meuKey } } });
     const remotos = new Map<string, number>();
@@ -113,6 +116,7 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
     const voz = new Voz(meuKey, (sinal) => void canal.send({ type: 'broadcast', event: 'rtc', payload: sinal }));
     (window as unknown as { __factoryVoz?: Voz }).__factoryVoz = voz;
     let seq = 91000;
+    let meetingRemoto: string | null = null;
     let npc: number | null = null;
     const seatAt = (col: number, row: number): string | null => {
       for (const [sid, st] of officeState.seats) if (st.seatCol === col && st.seatRow === row) return sid;
@@ -154,6 +158,9 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
         remotos.delete(k);
         ultimosP.delete(k);
       }
+      // reuniao: o CEO chama o time de um produto; todos veem esses agentes irem para a sala de reuniao
+      meetingRemoto = ceoKey ? (estado[ceoKey]?.slice(-1)[0]?.meeting ?? null) : null;
+      officeState.factoryMeeting(isOwner() ? reuniaoRef.current : meetingRemoto);
       const sala = ROOMS.find((r) => r.type === 'ceo')?.seat;
       if (!ceoOnline && npc === null && sala) {
         npc = seq++;
@@ -188,10 +195,11 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
         t = setInterval(() => {
           const eu = officeState.characters.get(MY_ID);
           if (!eu) return;
-          const chave = eu.tileCol + ',' + eu.tileRow + ',' + voz.ligado;
+          officeState.factoryMeeting(isOwner() ? reuniaoRef.current : meetingRemoto);
+          const chave = eu.tileCol + ',' + eu.tileRow + ',' + voz.ligado + ',' + reuniaoRef.current;
           if (chave === ultimo) return;
           ultimo = chave;
-          void canal.track({ name: me.name, palette: me.palette, kind: isOwner() ? 'ceo' : 'visitor', col: eu.tileCol, row: eu.tileRow, mic: voz.ligado, t: Date.now() });
+          void canal.track({ name: me.name, palette: me.palette, kind: isOwner() ? 'ceo' : 'visitor', col: eu.tileCol, row: eu.tileRow, mic: voz.ligado, t: Date.now(), meeting: isOwner() ? reuniaoRef.current : null });
         }, 600);
         // voz: quem esta a ate 4 tiles (e ainda ate 6 se ja conectado) e tambem esta com o microfone ligado
         v = setInterval(() => {
@@ -309,6 +317,15 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
         </button>
         {micMsg && <div style={{ font: '10px ' + MONO, color: '#A9B3C4', maxWidth: 170 }}>{micMsg}</div>}
         <Recados />
+        {isOwner() && (
+          <Reuniao
+            game={reuniao}
+            onChange={(g) => {
+              reuniaoRef.current = g;
+              setReuniao(g);
+            }}
+          />
+        )}
         <button style={botao} onClick={sair}>Sair</button>
       </div>
       <div style={{ position: 'fixed', left: 16, bottom: 96, zIndex: 25, display: 'flex', gap: 16, font: '14px ' + MONO, color: '#EEF1F6', background: 'rgba(8,9,12,.92)', border: '1px solid #262E3A', padding: '8px 14px' }}>
