@@ -164,53 +164,57 @@ export class FactoryTransport implements MessageTransport {
       return;
     }
 
-    const { data } = await sb
-      .from('factory_events')
-      .select('ts,game,session_id,agent,agent_id,event,tool,target')
-      .order('ts', { ascending: false })
-      .limit(300);
-    for (const e of ((data ?? []) as FactoryEvent[]).reverse()) this.handle(e);
-    this.settleStale();
-
-    sb.channel('factory-office')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'factory_events' },
-        (p) => this.handle(p.new as FactoryEvent),
-      )
-      .subscribe((s) => {
-        if (s === 'SUBSCRIBED') this.setState(TRANSPORT_STATE_CONNECTED);
-        else if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT' || s === 'CLOSED')
-          this.setState(TRANSPORT_STATE_RECONNECTING);
-      });
-
-    // Quem ficou calado ha mais de 2 minutos senta e descansa.
-    this.sweep = setInterval(() => this.settleStale(), 15_000);
+    // CEO: tabela completa. Consulta periodica em vez de websocket: no Android o navegador derruba a conexao em
+    // segundo plano e os eventos do intervalo se perdiam; a consulta por "ts maior que o ultimo" sempre recupera.
+    await this.poll('factory_events', 'ts,game,session_id,agent,agent_id,event,tool,target', (r) => r as FactoryEvent);
   }
 
   private async visitorFeed(): Promise<void> {
     type Pub = { ts: string; game: string; agent: string; event: string; tool: string | null };
     const conv = (r: Pub): FactoryEvent => ({ ...r, session_id: null, agent_id: null, target: null });
-    const cols = 'ts,game,agent,event,tool';
-    const { data } = await sb.from('factory_events_public').select(cols).order('ts', { ascending: false }).limit(300);
+    await this.poll('factory_events_public', 'ts,game,agent,event,tool', (r) => conv(r as Pub));
+  }
+
+  // Carga inicial (300 mais recentes) e depois consulta a cada 2,5 s; ao voltar para a aba ou a rede, consulta na hora.
+  private async poll(table: string, cols: string, conv: (r: unknown) => FactoryEvent): Promise<void> {
+    const { data } = await sb.from(table).select(cols).order('ts', { ascending: false }).limit(300);
     let ultimo = '';
-    for (const r of ((data ?? []) as Pub[]).reverse()) {
+    for (const r of ((data ?? []) as unknown as Array<{ ts: string }>).reverse()) {
       this.handle(conv(r));
       ultimo = r.ts;
     }
     this.settleStale();
     this.setState(TRANSPORT_STATE_CONNECTED);
-    this.sweep = setInterval(() => {
-      this.settleStale();
-      let q = sb.from('factory_events_public').select(cols).order('ts', { ascending: true }).limit(200);
-      if (ultimo) q = q.gt('ts', ultimo);
-      void q.then(({ data: novos }) => {
-        for (const r of (novos ?? []) as Pub[]) {
+    let busy = false;
+    const tick = async () => {
+      if (busy) return;
+      busy = true;
+      try {
+        this.settleStale();
+        let q = sb.from(table).select(cols).order('ts', { ascending: true }).limit(200);
+        if (ultimo) q = q.gt('ts', ultimo);
+        const { data: novos, error } = await q;
+        if (error) {
+          this.setState(TRANSPORT_STATE_RECONNECTING);
+          return;
+        }
+        this.setState(TRANSPORT_STATE_CONNECTED);
+        for (const r of (novos ?? []) as unknown as Array<{ ts: string }>) {
           this.handle(conv(r));
           ultimo = r.ts;
         }
-      });
-    }, 2500);
+      } catch {
+        this.setState(TRANSPORT_STATE_RECONNECTING);
+      } finally {
+        busy = false;
+      }
+    };
+    this.sweep = setInterval(() => void tick(), 2500);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) void tick();
+    });
+    window.addEventListener('online', () => void tick());
+    window.addEventListener('focus', () => void tick());
   }
 
   private settleStale(): void {
