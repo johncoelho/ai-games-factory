@@ -202,6 +202,12 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
       }
     };
     let ultimo = '';
+    let ultimoTrack = 0;
+    const reafirmar = () => {
+      ultimo = '';
+    };
+    window.addEventListener('online', reafirmar);
+    document.addEventListener('visibilitychange', reafirmar);
     let t: ReturnType<typeof setInterval> | null = null;
     let v: ReturnType<typeof setInterval> | null = null;
     alternarMic.current = () => {
@@ -228,8 +234,10 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
           if (!eu) return;
           officeState.factoryMeeting(isOwner() ? reuniaoRef.current : meetingRemoto);
           const chave = eu.tileCol + ',' + eu.tileRow + ',' + voz.ligado + ',' + reuniaoRef.current;
-          if (chave === ultimo) return;
+          // reafirma a presenca a cada 15 s: se a conexao caiu e voltou (aba em segundo plano, suspensao, rede), quem ficou parado some da lista dos outros ate mexer
+          if (chave === ultimo && Date.now() - ultimoTrack < 15_000) return;
           ultimo = chave;
+          ultimoTrack = Date.now();
           void canal.track({ name: me.name, palette: me.palette, kind: isOwner() ? 'ceo' : 'visitor', col: eu.tileCol, row: eu.tileRow, mic: voz.ligado, t: Date.now(), meeting: isOwner() ? reuniaoRef.current : null });
         }, 600);
         // voz: quem esta a ate 4 tiles (e ainda ate 6 se ja conectado) e tambem esta com o microfone ligado
@@ -250,6 +258,8 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
     }, 300);
     return () => {
       clearInterval(iniciar);
+      window.removeEventListener('online', reafirmar);
+      document.removeEventListener('visibilitychange', reafirmar);
       if (t) clearInterval(t);
       if (v) clearInterval(v);
       voz.desligar();
