@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-import { type Resultado, issuesDoPapel } from './issues.js';
+import { AVISO_PRIVADO, type Resultado, issuesDoPapel, temPrivado } from './issues.js';
 import { roleFromLabel } from './roles.js';
 import { isOwner } from './session.js';
 
@@ -36,15 +36,16 @@ export function FactoryIssues({ game, label }: { game?: string; label?: string }
   else
     corpo = (
       <>
-        {res.itens.map((i) => (
+        {temPrivado(res.itens) && <div style={{ color: '#5C6678', fontSize: 11, marginBottom: 6 }}>{AVISO_PRIVADO}</div>}
+        {res.itens.map((i, k) => (
           <a
-            key={i.numero}
+            key={i.url + i.numero + k}
             href={i.url}
             target="_blank"
             rel="noreferrer"
             style={{ display: 'block', color: '#EEF1F6', textDecoration: 'none', padding: '5px 0', borderTop: '1px solid #262E3A' }}
           >
-            <span style={{ color: '#7AD1E0' }}>#{i.numero}</span> {i.titulo}
+            {i.numero > 0 && <span style={{ color: '#7AD1E0' }}>#{i.numero} </span>}{i.titulo}
             <span style={{ display: 'block', color: '#5C6678', fontSize: 11 }}>{i.etapa}</span>
           </a>
         ))}

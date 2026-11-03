@@ -162,12 +162,14 @@ export class OfficeState {`,
     ch.seatId = this.factoryHome(ch) ?? ch.seatId;
   }
 
-  /** Fabrica: horario de folga (almoco 12h-14h e noite 19h-6h, hora de Sao Paulo): quem esta livre faz o que quiser. */
+  /** Fabrica: horario de folga (almoco 12:00-13:30 e noite 19h-6h, hora de Sao Paulo): quem esta livre faz o que quiser. */
   private folga(): boolean {
     const teste = (globalThis as unknown as { __factoryFolga?: boolean }).__factoryFolga;
     if (typeof teste === 'boolean') return teste;
-    const h = Number(new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hour12: false, timeZone: 'America/Sao_Paulo' }).format(new Date()).slice(0, 2)) % 24;
-    return (h >= 12 && h < 14) || h >= 19 || h < 6;
+    const partes = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Sao_Paulo' }).formatToParts(new Date());
+    const h = Number(partes.find((p) => p.type === 'hour')?.value) % 24;
+    const min = h * 60 + Number(partes.find((p) => p.type === 'minute')?.value);
+    return (min >= 12 * 60 && min < 13 * 60 + 30) || h >= 19 || h < 6;
   }
 
   /** Fabrica: onde o agente fica quando nao esta em reuniao: na mesa (trabalhando, aguardando ou em expediente), no lazer se esta livre na folga. */
@@ -446,7 +448,7 @@ import { overlayProjection } from '../projection.js';`,
   ],
 ]);
 
-// 4b2) estado do agente (verde, amarelo, vermelho) vem do transporte; o balao de fala e o sinal ficam no ToolOverlay
+// 4b2) estado do agente (verde, amarelo, vermelho) vem do transporte; o balao de estado e desenhado no HumanLayer (junto das etiquetas); o sinal de espera fica no ToolOverlay
 patch("src:hooks/useExtensionMessages.ts", [
   [
     `        os.setAgentActive(id, status === 'active');
@@ -458,38 +460,7 @@ patch("src:hooks/useExtensionMessages.ts", [
 ]);
 patch("components/ToolOverlay.tsx", [
   [`        if (ch.bubbleType && !(ch.bubbleType === 'waiting' && ch.waitingAwaitingInput)) {`, `        if (isSub && ch.bubbleType &&!(ch.bubbleType === 'waiting' && ch.waitingAwaitingInput)) {`],
-  [
-    `        // Only show the label for hovered or selected agents (unless`,
-    `        // Fabrica: pontinho de estado sobre a cabeca (verde livre, amarelo aguardando, vermelho ocupado) e balao de fala da mudanca
-        let estadoNode = null;
-        if (!ch.isHuman && !isSub) {
-          const st = ch.factoryStatus ?? 'free';
-          const cor = st === 'busy' ? '#EB5757' : st === 'waiting' ? '#F2C94C' : '#6FCF97';
-          const sentado = ch.state === CharacterState.TYPE ? CHARACTER_SITTING_OFFSET_PX : 0;
-          const topo = project.toScreenY(ch.y + sentado - 34) - 13;
-          const fb = ch.factoryBubble;
-          estadoNode = fb ? (
-            <div
-              className="absolute -translate-x-1/2 pointer-events-none"
-              style={{ left: project.toScreenX(ch.x), top: topo - 26, whiteSpace: 'nowrap', padding: '2px 6px', background: '#0F1318', color: '#EEF1F6', border: '1px solid ' + cor, font: "11px ui-monospace,Consolas,monospace", zIndex: OVERLAY_BUBBLE_Z_INDEX }}
-            >
-              {fb.texto}
-            </div>
-          ) : null;
-        }
-
-        // Only show the label for hovered or selected agents (unless`,
-  ],
-  [`          return bubbleNode && <Fragment key={id}>{bubbleNode}</Fragment>;`, `          return <Fragment key={id}>{bubbleNode}{estadoNode}</Fragment>;`],
-  [
-    `              {bubbleNode}
-              <div
-                className="absolute"`,
-    `              {bubbleNode}
-              {estadoNode}
-              <div
-                className="absolute"`,
-  ],
+  // o balao de estado (Comecando, Pronto, Aguardando) e desenhado no HumanLayer, junto das pilulas, para desviar de humanos e de outros baloes
 ]);
 
 // 4c) o nome do squad escrito no chao (areas) fica sempre visivel, sem depender da configuracao de cada usuario

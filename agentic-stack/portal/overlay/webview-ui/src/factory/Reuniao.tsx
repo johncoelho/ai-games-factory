@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { SQUADS } from './config.js';
 import { type Entregas, entregas } from './changelog.js';
-import { type Issue, type Resultado, statusDoSquad } from './issues.js';
+import { AVISO_PRIVADO, type Issue, type Resultado, statusDoSquad, temPrivado } from './issues.js';
 import { getMeta } from './meta.js';
 
 const MONO = "ui-monospace,Consolas,'JetBrains Mono',monospace";
@@ -46,9 +46,9 @@ export function Reuniao({ game, onChange }: { game: string | null; onChange: (g:
   const botao = { background: '#0F1318', color: '#EEF1F6', border: '1px solid #262E3A', font: '11px ' + MONO, padding: '4px 8px', cursor: 'pointer', textAlign: 'left' } as const;
 
   const lista = (itens: Issue[]) =>
-    itens.map((i) => (
-      <a key={i.numero} href={i.url} target="_blank" rel="noreferrer" style={{ display: 'block', color: '#EEF1F6', textDecoration: 'none', padding: '4px 0', borderTop: '1px solid #262E3A' }}>
-        <span style={{ color: '#7AD1E0' }}>#{i.numero}</span> {i.titulo}
+    itens.map((i, k) => (
+      <a key={i.url + i.numero + k} href={i.url} target="_blank" rel="noreferrer" style={{ display: 'block', color: '#EEF1F6', textDecoration: 'none', padding: '4px 0', borderTop: '1px solid #262E3A' }}>
+        {i.numero > 0 && <span style={{ color: '#7AD1E0' }}>#{i.numero} </span>}{i.titulo}
         <span style={{ display: 'block', color: '#5C6678', fontSize: 11 }}>{i.etapa}</span>
       </a>
     ));
@@ -92,6 +92,7 @@ export function Reuniao({ game, onChange }: { game: string | null; onChange: (g:
       {res === null && <div style={{ color: '#5C6678' }}>carregando o quadro…</div>}
       {res?.estado === 'sem_token' && <div style={{ color: '#E6AC3F' }}>Quadro ainda não liberado: falta o token do GitHub no Supabase.</div>}
       {res?.estado === 'erro' && <div style={{ color: '#E6AC3F' }}>Não foi possível ler o quadro ({res.msg}).</div>}
+      {res?.estado === 'ok' && temPrivado(res.itens) && <div style={{ color: '#5C6678', fontSize: 11 }}>{AVISO_PRIVADO}</div>}
       {res?.estado === 'ok' && (emCurso.length ? lista(emCurso) : <div style={{ color: '#5C6678' }}>nada em curso</div>)}
     </>
   );
