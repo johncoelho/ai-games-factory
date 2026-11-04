@@ -7,7 +7,8 @@ O GitHub avisa o repo; o repo chama o agente. Nada depende do Claude Code aberto
 2. Dispara em: issue aberta, reaberta ou rotulada; comentario novo; varredura de seguranca de hora em hora (so aciona o Claude se houver issue sem o rotulo `triado`); manual (`workflow_dispatch`).
 3. Roteamento: issue com rotulo `origem:jogo`, `bug`, `feedback`, `suporte` ou `melhoria` vai para o **suporte** (se o projeto tem `.claude/agents/suporte.md`); o resto vai para o **principal** (o nome vem de `equipe.principal` do `factory.yaml`: CTO, CMO, PM...; ele lê `CLAUDE.md` (se existir), `MEMORY.md` e `factory.yaml`).
 4. Regra do CEO: cada agente atua so nas suas atribuicoes; o principal delega (dev implementa, QA testa, suporte atende) e nunca faz tudo sozinho.
-5. Principal: classifica, poe no quadro na etapa certa, delega ao agente do time com comentario. Suporte: responde a quem abriu e escala ao principal (`Suporte -> principal`). Todo comentario comeca com 🤖 (a esteira ignora o proprio rastro) e a issue ganha o rotulo `triado`.
+5. Modelo: Haiku (claude-haiku-5-5) para triagem e resposta; sobe para Sonnet se a triagem falhar ou o caso for complexo (ajuste `--model` no workflow).
+6. Principal: classifica, poe no quadro na etapa certa, delega ao agente do time com comentario. Suporte: responde a quem abriu e escala ao principal (`Suporte -> principal`). Todo comentario comeca com 🤖 (a esteira ignora o proprio rastro) e a issue ganha o rotulo `triado`.
 6. Esta fase faz so triagem, delegacao e resposta. Implementar, publicar e testar em emulador continuam na esteira local (precisam de ferramentas que o GitHub nao tem).
 
 ## Segredos (por repo, Settings > Secrets and variables > Actions)
