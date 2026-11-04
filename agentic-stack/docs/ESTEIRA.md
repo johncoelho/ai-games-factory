@@ -17,7 +17,7 @@ Os agentes ficam em `.claude/agents/`; a rodada recorrente é a skill `esteira`.
 
 Os nomes no portal são sobrenomes de figuras da tecnologia (só o sobrenome, de propósito).
 
-Modelos: Tech Lead no Opus (desenho e revisão); os demais no Sonnet.
+Modelos: o padrão é Sonnet para todos, inclusive o Tech Lead na revisão de diff. Opus só para desenho técnico e segurança. O CTO sobrescreve `model`/`effort` por demanda conforme a seção "Modelo e esforço por demanda".
 
 ## Quadro
 
@@ -43,6 +43,16 @@ Nota: `etapas:` no `factory.yaml` diz onde cada papel atua/acompanha (o portal u
 - **Só o John edita o mapa.** Visitantes só veem e se movimentam.
 - **Segredo nunca no repositório.** Token do GitHub e chaves privadas ficam como segredo do Supabase.
 - Commits só de documentação ou configuração dispensam novo build do portal.
+
+## Modelo e esforço por demanda
+
+O CTO escolhe o modelo e o esforço de cada delegação pela complexidade da demanda, usando os parâmetros `model` e `effort` da ferramenta Agent/Task; o modelo fixo no cabeçalho do agente é só o padrão.
+
+- Trivial com conferência objetiva (trocar um texto, conferir publicação por curl/grep/SQL, abrir issue por modelo, triagem simples): haiku, esforço baixo.
+- Rotina (funcionalidade em código conhecido, revisão de diff pequeno, QA visual, especificação visual): sonnet, esforço médio. É o padrão.
+- Complexa ou arriscada (desenho técnico novo, segurança, bug de causa desconhecida, mudança em vários arquivos que se influenciam): opus, esforço alto, só para Tech Lead e Dev quando necessário.
+
+Haiku só onde o resultado se confere por teste; se falhar, sobe um degrau em vez de repetir. Revisão de diff do Tech Lead é Sonnet por padrão; Opus só para desenho e segurança. Sessões novas por assunto e compactar cedo economizam mais que trocar o modelo do console.
 
 ## Rodada da esteira
 
