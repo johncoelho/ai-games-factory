@@ -12,6 +12,11 @@ on:
 
 jobs:
   agente:
+    # sem este bloco o GitHub recusa a partida (startup_failure): o workflow chamado pede escrita em issues e o padrao do repo e so leitura
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
     uses: johncoelho/ai-games-factory/.github/workflows/fabrica-agente.yml@main
     with:
       squad: agentic-stack
