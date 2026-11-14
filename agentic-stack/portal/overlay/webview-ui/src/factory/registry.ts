@@ -8,6 +8,7 @@ export interface AgentInfo {
 const agents = new Map<number, AgentInfo>();
 const squads = new Map<string, string>();
 const activity = new Map<number, string>();
+const emRodada = new Set<number>();
 const listeners = new Set<() => void>();
 let version = 0;
 
@@ -26,8 +27,18 @@ export const registry = {
     notify();
   },
   setActivity(id: number, text: string): void {
+    if (activity.get(id) === text) return;
     activity.set(id, text);
+    notify();
   },
+  // Rodada do workflow em andamento: flag propria, independente do texto da ferramenta em uso.
+  setRodada(id: number, on: boolean): void {
+    if (emRodada.has(id) === on) return;
+    if (on) emRodada.add(id);
+    else emRodada.delete(id);
+    notify();
+  },
+  rodada: (id: number): boolean => emRodada.has(id),
   activity: (id: number): string => activity.get(id) ?? '',
   agentIds: (): number[] => [...agents.keys()],
   agent: (id: number): AgentInfo | undefined => agents.get(id),

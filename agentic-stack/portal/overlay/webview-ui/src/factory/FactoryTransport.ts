@@ -43,6 +43,8 @@ const VERB: Record<string, string> = {
   Agent: 'Task',
 };
 const IDLE_AFTER_MS = 2 * 60 * 1000;
+// No build demo com ?semstop=1 o limite e 25 s para o QA conferir o timeout; em producao e sempre 20 min.
+const RODADA_MAX_MS = import.meta.env.VITE_DEMO && location.search.includes('semstop') ? 25 * 1000 : 20 * 60 * 1000; // rodada do workflow (SessionStart sem Stop): tempo maximo = timeout do job
 const FERIAS_MS = 7 * 24 * 60 * 60 * 1000; // sem demanda ha mais de 1 semana: ferias na piscina
 
 type Escritorio = { factoryFerias(id: number, on: boolean): void };
@@ -74,6 +76,9 @@ export class FactoryTransport implements MessageTransport {
   private keys = new Map<number, { game: string; agent: string }>();
   private banner: HTMLElement | null = null;
   private ferias = new Set<number>();
+  // Rodadas do workflow em andamento (SessionStart ate o Stop): o agente fica aceso mesmo sem outros eventos, ate RODADA_MAX_MS.
+  // Chave do agente = jogo|agente (session_id fora da chave): duas sessoes do mesmo agente compartilham a rodada; o Stop de uma encerra a de ambas.
+  private rodadas = new Map<number, number>();
 
   // Ferias: a view factory_agent_ultimo (ultimo e primeiro evento de cada agente) e o dono do dado. Sem historico de 1 semana, ninguem esta de ferias.
   private async carregarFerias(): Promise<void> {
@@ -175,6 +180,26 @@ export class FactoryTransport implements MessageTransport {
         setTimeout(() => this.handle({ ...base, ts: new Date().toISOString(), event: 'PostToolUse' }), 2500);
         setTimeout(() => this.handle({ ...base, ts: new Date().toISOString(), event: 'Stop' }), 5000);
       };
+      // Rodada do workflow sintetica (SessionStart ... Stop 40 s depois) no agentic-stack, em ciclo, para o QA conferir.
+      const rodada = () => {
+        const b = { game: 'agentic-stack', session_id: 'run1', agent: 'principal', agent_id: null, tool: null, target: null };
+        this.handle({ ...b, ts: new Date().toISOString(), event: 'SessionStart' });
+        // ferramenta no meio da rodada: o selo "em rodada" tem de permanecer
+        const t = { ...b, tool: 'Read', target: 'docs/X.md' };
+        setTimeout(() => this.handle({ ...t, ts: new Date().toISOString(), event: 'PreToolUse' }), 10000);
+        setTimeout(() => this.handle({ ...t, ts: new Date().toISOString(), event: 'PostToolUse' }), 15000);
+        // ?semstop=1: nao manda o Stop (confere o tempo maximo da rodada)
+        if (!location.search.includes('semstop')) setTimeout(() => this.handle({ ...b, ts: new Date().toISOString(), event: 'Stop' }), 40000);
+      };
+      // handle() descarta eventos de quem nao esta na equipe: espera a equipe do agentic-stack carregar antes da primeira rodada.
+      const equipeOk = () => !!this.meta.get('agentic-stack')?.equipe['principal'];
+      const esperar = setInterval(() => {
+        if (!equipeOk()) return;
+        clearInterval(esperar);
+        rodada();
+        setInterval(rodada, 80000);
+        setInterval(() => this.settleStale(), 2000);
+      }, 200);
       tick();
       setInterval(tick, 1500);
       return;
@@ -251,7 +276,16 @@ export class FactoryTransport implements MessageTransport {
 
   private settleStale(): void {
     const now = Date.now();
+    for (const [id, ini] of this.rodadas) {
+      if (now - ini <= RODADA_MAX_MS) continue;
+      // timeout da rodada sem Stop: limpa flag e atividade junto com o descanso
+      this.rodadas.delete(id);
+      registry.setRodada(id, false);
+      registry.setActivity(id, 'descansando');
+      this.rest(id);
+    }
     for (const [id, t] of this.lastSeen) {
+      if (this.rodadas.has(id)) continue;
       if (now - t > IDLE_AFTER_MS) {
         this.rest(id);
         this.lastSeen.delete(id);
@@ -373,9 +407,23 @@ export class FactoryTransport implements MessageTransport {
         }
         break;
       }
+      case 'SessionStart': {
+        // Inicio de rodada do workflow (sem tool): acende o agente. O tempo maximo conta pelo ts do evento (historico antigo sem Stop nao acende).
+        const ini = new Date(e.ts).getTime();
+        if (Date.now() - ini < RODADA_MAX_MS) {
+          this.rodadas.set(id, ini);
+          registry.setRodada(id, true);
+          registry.setActivity(id, 'em rodada');
+          this.emit({ type: 'agentStatus', id, status: 'active' });
+        }
+        break;
+      }
       case 'Stop':
       case 'SubagentStop':
       case 'SessionEnd':
+        // So Stop e SessionEnd encerram a rodada; SubagentStop nao toca nela: o principal em rodada continua aceso.
+        if (e.event === 'SubagentStop' && this.rodadas.has(id)) break;
+        if (this.rodadas.delete(id)) registry.setRodada(id, false);
         registry.setActivity(id, 'descansando');
         this.rest(id);
         break;

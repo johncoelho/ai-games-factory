@@ -40,7 +40,7 @@ export function CardGroups({ agentIds, render }: { agentIds: number[]; render: (
             {groups.get(g)!.map((id) => {
               const info = registry.agent(id);
               return (
-                <div key={id} className="flex flex-col items-center" title={info ? `${info.nome} (${info.role})` : undefined}>
+                <div key={id} className="flex flex-col items-center" data-atividade={registry.rodada(id) ? 'em rodada' : registry.activity(id)} data-rodada={registry.rodada(id) ? '1' : '0'} data-ferramenta={registry.activity(id)} data-agente={info ? `${info.game}|${info.role}` : undefined} title={info ? `${info.nome} (${info.role})` : undefined}>
                   {render(id)}
                   <div
                     style={{
@@ -55,6 +55,11 @@ export function CardGroups({ agentIds, render }: { agentIds: number[]; render: (
                   >
                     {info?.nome ?? ''}
                   </div>
+                  {registry.rodada(id) && (
+                    <div style={{ font: "700 9px ui-monospace,Consolas,monospace", color: '#08090C', background: '#7AD1E0', padding: '0 3px', marginTop: 1 }}>
+                      em rodada
+                    </div>
+                  )}
                 </div>
               );
             })}
