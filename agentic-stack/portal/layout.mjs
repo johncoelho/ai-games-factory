@@ -16,6 +16,8 @@ const TILE_WC = { tile: 2, color: { h: 190, s: 22, b: -10, c: -40 } };
 const GRASS = { tile: 1, color: { h: 125, s: 38, b: -48, c: -62 } };
 const DECK = { tile: 7, color: { h: 30, s: 45, b: -25, c: -70 } };
 const CEO_FLOOR ={ tile: 6, color: { h: 18, s: 55, b: -62, c: -75 } };
+const CEO_RUG = { tile: 1, color: { h: 352, s: 55, b: -48, c: -50 } }; // tapete bordo da sala do CEO
+const CEO_RUG_TRIM = { tile: 2, color: { h: 42, s: 60, b: -22, c: -40 } }; // bordado dourado do tapete
 
 export const SQUADS_MAPA = [
   { slug: 'naval-battle', label: 'SQUAD BATALHA NAVAL' },
@@ -205,7 +207,7 @@ export function buildLayout() {
     p('PLANT_2', 0, -1); p('SMALL_PAINTING', 1, -2); p('CLOCK', 2, -2); p('LARGE_PAINTING', 6, -2); p('PLANT', 8, -1);
     p('DESK_FRONT', 3, 3); p('PC_FRONT_OFF', 4, 3); p('CUSHIONED_CHAIR_FRONT', 4, 2);
     p('SOFA_FRONT', 0, 7); p('SOFA_FRONT', 7, 7); p('COFFEE_TABLE', 0, 5); p('LARGE_PLANT', 7, 4);
-    p('POT', 8, 9); p('POT', 0, 9); p('CACTUS', 8, 3); p('CACTUS', 0, 3);
+    p('POT', 8, 9); p('POT', 0, 9); p('CACTUS', 8, 2); p('CACTUS', 0, 3);
     area('RECEPÇÃO', '#E6AC3F', x + 1, y + 1, 7);
     rooms.push({ id: 'recepcao', type: 'reception', label: 'RECEPÇÃO', x, y, w: 9, h: H, spawn: { col: x + 4, row: y + 9 }, seat: { col: x + 4, row: y + 2 } });
   }
@@ -213,11 +215,19 @@ export function buildLayout() {
   {
     const x = colX(2), y = BOT;
     const p = (type, dx, dy) => add(type, x + dx, y + dy);
-    p('DOUBLE_BOOKSHELF', 0, -2); p('MIRROR', 2, -2); p('GOLD_FRAME_GREEN', 6, -2); p('GOLD_FRAME_ORANGE', 7, -2); p('PLANT', 8, -1);
+    // parede simetrica (dx 3 a 5 e a porta): em cada lado, tapecaria laranja com escudo entre duas tochas
+    for (const dx of [0, 6]) {
+      p('BANNER_ORANGE', dx, -1); p('TORCH_WALL', dx, -2); p('SHIELD_BRONZE', dx + 1, -2); p('TORCH_WALL', dx + 2, -2);
+    }
+    // tapete bordo com bordado dourado entre as plantas (a faixa do nome, na linha 6, fica de fora)
+    floor(x + 2, y, 5, 6, CEO_RUG_TRIM);
+    floor(x + 3, y + 1, 3, 4, CEO_RUG);
     p('DESK_FRONT', 3, 2); p('PC_FRONT_OFF', 4, 2); p('CUSHIONED_CHAIR_BACK', 4, 4);
     p('LARGE_PLANT', 0, 1); p('LARGE_PLANT', 7, 1);
+    p('GOLD_FLOOR_CANDELABRA', 2, 3); p('GOLD_FLOOR_CANDELABRA', 6, 3); // alinhados nas colunas livres ao lado da mesa
+    p('GRAND_PIANO', 7, 4); p('URN_SILVER', 0, 6); p('URN_GOLD', 8, 6);
     p('SOFA_BACK', 1, 8); p('SOFA_BACK', 6, 8); p('COFFEE_TABLE', 4, 7); p('COFFEE', 4, 8);
-    p('POT', 8, 9); p('GRAND_PIANO', 6, 4); p('CANDELABRA', 2, 4); p('CANDELABRA', 6, 2);
+    p('POTTED_PLANT_A', 0, 9); p('POTTED_PLANT_B', 8, 8); p('POT', 8, 9);
     area('CEO', '#FFC95C', x + 1, y + 6, 7);
     rooms.push({ id: 'ceo', type: 'ceo', label: 'CEO', x, y, w: 9, h: H, seat: { col: x + 4, row: y + 4 } });
   }

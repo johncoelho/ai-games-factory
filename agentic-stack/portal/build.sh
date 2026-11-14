@@ -35,10 +35,5 @@ mkdir -p "$OUT"
 cp -r dist/webview/. "$OUT/"
 rm -f "$OUT/Screenshot.jpg" "$OUT/banner.png"
 cp LICENSE "$OUT/LICENSE-pixel-agents.txt"
-cat > "$OUT/CREDITS.txt" <<'EOF'
-Escritorio visual: Pixel Agents (https://github.com/pablodelucca/pixel-agents), licenca MIT (LICENSE-pixel-agents.txt).
-Moveis do CEO (piano, candelabro, molduras, espelho): Roguelike Indoors, de Kenney (https://kenney.nl), CC0.
-TV, fliperama, pebolim, xadrez, bar, sinuca, mesa de reuniao, cafe, banheiro e variantes de avatar: arte original da fabrica (portal/tools).
-Personagens baseados em Metro City, de JIK-A-4 (https://jik-a-4.itch.io/metrocity-free-topdown-character-pack).
-EOF
+cp "$HERE/CREDITS.txt" "$OUT/CREDITS.txt"
 echo "pronto: $OUT"

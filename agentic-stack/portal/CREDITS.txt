@@ -1,0 +1,12 @@
+Escritorio visual: Pixel Agents (https://github.com/pablodelucca/pixel-agents), licenca MIT (LICENSE-pixel-agents.txt).
+
+Roguelike Indoors, de Kenney (Kenney Vleugels, https://kenney.nl/assets/roguelike-indoors), licenca CC0 1.0
+(https://creativecommons.org/publicdomain/zero/1.0/). Uso livre, credito nao obrigatorio.
+  Moveis ja usados: piano de cauda, candelabro, molduras douradas (GOLD_FRAME_*) e espelho (MIRROR).
+  Moveis adicionados (recortados por portal/tools/importa-kenney.py): candelabro dourado de chao (GOLD_FLOOR_CANDELABRA),
+  urnas acesas (URN_GOLD, URN_SILVER), vasos (POTTED_PLANT_A/B), tocha de parede (TORCH_WALL), escudos (SHIELD_BRONZE,
+  SHIELD_TEAL), tapecarias de parede (BANNER_ORANGE/TEAL/GREEN) e mapas de parede (MAP_WORLD, MAP_CASTLE).
+  Origem do arquivo: https://kenney.nl/assets/roguelike-indoors (pacote "Roguelike Indoor pack", folha 16x16 com margem de 1px).
+
+TV, fliperama, pebolim, xadrez, bar, sinuca, mesa de reuniao, cafe, banheiro e variantes de avatar: arte original da fabrica (portal/tools).
+Personagens baseados em Metro City, de JIK-A-4 (https://jik-a-4.itch.io/metrocity-free-topdown-character-pack).
