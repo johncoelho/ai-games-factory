@@ -5,6 +5,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+// Eventos cobertos (registrar cada um em .claude/settings*.json): SessionStart, PreToolUse, PermissionRequest, Stop
+// e, alem deles, SessionEnd, PostToolUse, SubagentStart/Stop, Notification, UserPromptSubmit.
+// Este hook SO observa. Em PermissionRequest (e em qualquer evento) a saida padrao de um hook pode aprovar,
+// negar ou injetar contexto; por isso nada pode sair em stdout/stderr. Trava aqui, vale para codigo futuro tambem.
+process.stdout.write = () => true;
+process.stderr.write = () => true;
+
 // Padrao = Supabase da fabrica (base jarvis-agentic-stack). A chave e a publicavel (so insere; ler exige login), feita para ser publica.
 // O bloco "env" do settings.local.json nao chegou aos hooks nos testes reais, por isso o padrao fica aqui.
 const URL_ = process.env.FACTORY_EVENTS_URL || "https://lwaoxnjajxljxusxujku.supabase.co/rest/v1/factory_events";

@@ -16,6 +16,6 @@ O GitHub avisa o repo; o repo chama o agente. Nada depende do Claude Code aberto
 - `FABRICA_GH_TOKEN`: token classico do GitHub com `repo` e `project` (o token padrao do Actions nao edita projetos de usuario). Sem os dois, o workflow nao faz nada.
 
 ## Limites conhecidos
-- Rodadas no Actions não aparecem no portal enquanto não houver hook no runner.
+- Sinal ao vivo das rodadas: o workflow manda `SessionStart` (antes do agente) e `Stop` (depois, `if: always()`) para `factory_events`, com `game` = squad, `agent` = papel da rodada (principal/suporte) e `session_id` = `run_id`. Usa só a chave publicável (a mesma do hook; a política `factory_events_insert` só deixa inserir), sem segredo novo; falha de rede é ignorada (`continue-on-error`, `curl --max-time 5 || true`). Se a rodada for pulada (sem trabalho), nada é enviado. Rodada cancelada ainda manda o `Stop`; em timeout do job isso não é garantido (o portal aplica um tempo máximo). O `squad` informado no chamador deve ser igual ao `slug` do `factory.yaml`, para o Actions e o hook local aparecerem como o mesmo jogo.
 - Mover cartao entre etapas no quadro nao dispara o GitHub Actions em projetos de usuario; a varredura horaria cobre so issues sem triagem.
 - O texto das issues e dado de terceiros: o agente roda com ferramentas restritas (Read, Glob, Grep, Task, `gh issue`, `gh project`, `gh label`).
