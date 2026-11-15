@@ -7,6 +7,8 @@ quadro: { tipo: github-projects, owner: johncoelho, numero: 5 }
 squad: .claude/agents
 lojas: []
 nome_squad: SQUAD DOMÍNIO
+# Férias manuais do squad: todos vão à piscina; só o agente que recebe evento novo ao vivo sai. Remover a linha (ou false) volta ao normal.
+ferias: true
 # Nome de cada papel do squad (o portal mostra estes nomes; a chave e o nome do arquivo em .claude/agents).
 equipe:
   principal: Prefeito
