@@ -45,6 +45,8 @@ patch("types.ts", [
   factoryBubble?: { texto: string; ate: number } | null;
   /** Fabrica: de ferias (sem demanda ha mais de 1 semana): fica na espreguicadeira da piscina, a nao ser que seja chamado. */
   ferias?: boolean;
+  /** Fabrica: ferias manuais do squad (factory.yaml ferias: true): fica na piscina o tempo todo, sem passeios ao cafe/banheiro. */
+  feriasFixa?: boolean;
   poolSeatId?: string | null;`,
   ],
 ]);
@@ -181,7 +183,7 @@ export class OfficeState {`,
   }
 
   /** Fabrica: ferias. Liga: reserva uma espreguicadeira na piscina. Desliga (voltou a ter demanda): solta a espreguicadeira. */
-  factoryFerias(id: number, on: boolean): void {
+  factoryFerias(id: number, on: boolean, fixa = false): void {
     const ch = this.characters.get(id);
     if (!ch || ch.isHuman || !ch.loungeSeatId || !!ch.ferias === on) return;
     if (on) {
@@ -196,6 +198,8 @@ export class OfficeState {`,
       ch.poolSeatId = null;
       ch.ferias = false;
     }
+    ch.feriasFixa = on && fixa;
+    if (ch.feriasFixa && ch.visitSeatId && !ch.inMeeting) this.factoryEndVisit(ch);
     if (!ch.inMeeting && !ch.visitSeatId) ch.seatId = this.factoryHome(ch) ?? ch.seatId;
   }
 
@@ -246,7 +250,7 @@ export class OfficeState {`,
         ch.seatId = casa;
         continue;
       }
-      if (!livre) continue;
+      if (!livre || ch.feriasFixa) continue;
       const seat = casa ? this.seats.get(casa) : undefined;
       if (!seat || ch.tileCol !== seat.seatCol || ch.tileRow !== seat.seatRow) continue;
       ch.nextVisit = (ch.nextVisit ?? 30 + Math.random() * 120) - dt;
@@ -370,7 +374,7 @@ patch("engine/characters.ts", [
         if (ch.seatTimer > 0) {`,
     `      if (!ch.isActive) {
         // Fabrica: sentado na sala de estar, fica ali (sem animar de digitar).
-        const sofa = ch.seatId && (ch.seatId === ch.loungeSeatId || ch.seatId === ch.visitSeatId || ch.seatId === ch.deskSeatId) ? seats.get(ch.seatId) : undefined;
+        const sofa = ch.seatId && (ch.seatId === ch.loungeSeatId || ch.seatId === ch.visitSeatId || ch.seatId === ch.deskSeatId || (!!ch.poolSeatId && ch.seatId === ch.poolSeatId)) ? seats.get(ch.seatId) : undefined;
         if (sofa && ch.tileCol === sofa.seatCol && ch.tileRow === sofa.seatRow) {
           ch.dir = sofa.facingDir;
           ch.frame = 0;
@@ -389,7 +393,7 @@ patch("engine/characters.ts", [
     `      // Countdown wander timer
       ch.wanderTimer -= dt;`,
     `      // Fabrica: sem demanda, vai direto para o assento da sala de estar em vez de vagar.
-      if (ch.seatId && (ch.seatId === ch.loungeSeatId || ch.seatId === ch.visitSeatId || ch.seatId === ch.deskSeatId)) {
+      if (ch.seatId && (ch.seatId === ch.loungeSeatId || ch.seatId === ch.visitSeatId || ch.seatId === ch.deskSeatId || (!!ch.poolSeatId && ch.seatId === ch.poolSeatId))) {
         const sofa = seats.get(ch.seatId);
         if (sofa) {
           const path = findPath(ch.tileCol, ch.tileRow, sofa.seatCol, sofa.seatRow, tileMap, blockedTiles);

@@ -6,10 +6,12 @@ export interface GameMeta {
   equipe: Record<string, string>;
   etapas: Record<string, string[]>;
   quadro: { owner: string; numero: number } | null;
+  /** Ferias manuais do squad inteiro (campo opcional `ferias: true` no factory.yaml). Ausente ou false = normal. */
+  ferias: boolean;
 }
 
 const cache = new Map<string, Promise<GameMeta>>();
-const vazio = (): GameMeta => ({ squad: '', equipe: {}, etapas: {}, quadro: null });
+const vazio = (): GameMeta => ({ squad: '', equipe: {}, etapas: {}, quadro: null, ferias: false });
 
 export function parseFactoryYaml(txt: string): GameMeta {
   const m = vazio();
@@ -23,6 +25,7 @@ export function parseFactoryYaml(txt: string): GameMeta {
     if (l[0] !== ' ' && l[0] !== String.fromCharCode(9)) {
       secao = chave;
       if (chave === 'nome_squad') m.squad = valor;
+      if (chave === 'ferias') m.ferias = valor.replace(/\s+#.*$/, '').toLowerCase() === 'true';
       if (chave === 'quadro') {
         const owner = /owner:\s*([A-Za-z0-9-]+)/.exec(valor)?.[1];
         const numero = Number(/numero:\s*(\d+)/.exec(valor)?.[1]);
@@ -42,6 +45,8 @@ export function getMeta(game: string): Promise<GameMeta> {
   if (!p) {
     p = fetch(SQUADS.find((x) => x.slug === game)?.yaml ?? `https://raw.githubusercontent.com/johncoelho/${game}/main/factory.yaml`)
       .then((r) => (r.ok ? r.text().then(parseFactoryYaml) : vazio()))
+      // Teste local (VITE_DEMO=1): ?ferias=<slug> liga as ferias do squad sem depender do yaml publicado.
+      .then((m) => (import.meta.env.VITE_DEMO && new URLSearchParams(location.search).get('ferias') === game ? { ...m, ferias: true } : m))
       .catch(vazio);
     cache.set(game, p);
   }

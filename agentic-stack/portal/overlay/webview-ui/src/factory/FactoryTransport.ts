@@ -47,7 +47,7 @@ const IDLE_AFTER_MS = 2 * 60 * 1000;
 const RODADA_MAX_MS = import.meta.env.VITE_DEMO && location.search.includes('semstop') ? 25 * 1000 : 20 * 60 * 1000; // rodada do workflow (SessionStart sem Stop): tempo maximo = timeout do job
 const FERIAS_MS = 7 * 24 * 60 * 60 * 1000; // sem demanda ha mais de 1 semana: ferias na piscina
 
-type Escritorio = { factoryFerias(id: number, on: boolean): void };
+type Escritorio = { factoryFerias(id: number, on: boolean, fixa?: boolean): void; factoryTeleport(id: number): void };
 const escritorio = (): Escritorio | undefined => (window as unknown as { __factoryOffice?: Escritorio }).__factoryOffice;
 const PALETTES = 30;
 const PALETA_BIA = 13; // reservada para a recepcionista
@@ -76,12 +76,26 @@ export class FactoryTransport implements MessageTransport {
   private keys = new Map<number, { game: string; agent: string }>();
   private banner: HTMLElement | null = null;
   private ferias = new Set<number>();
+  // Ferias manuais (factory.yaml com `ferias: true`): todos do squad vao a piscina. So um evento ao vivo (depois de abrir o portal)
+  // do proprio agente acaba as ferias dele; o historico carregado na abertura nao conta e o evento de um agente nao tira os outros.
+  private feriasManual = new Set<number>();
+  private abriuEm = Date.now();
+  private feriasTeleportados = new Set<number>();
+  // Ja esta na espreguicadeira? (o teleporte so vale se o personagem ja existe e tem lugar; senao tenta de novo)
+  private naPiscina = (id: number): boolean => {
+    type Of = { characters: Map<number, { tileCol: number; tileRow: number; poolSeatId?: string | null }>; seats: Map<string, { seatCol: number; seatRow: number }> };
+    const o = (window as unknown as { __factoryOffice?: Of }).__factoryOffice;
+    const ch = o?.characters.get(id);
+    const seat = ch?.poolSeatId ? o?.seats.get(ch.poolSeatId) : undefined;
+    return !!ch && !!seat && ch.tileCol === seat.seatCol && ch.tileRow === seat.seatRow;
+  };
   // Rodadas do workflow em andamento (SessionStart ate o Stop): o agente fica aceso mesmo sem outros eventos, ate RODADA_MAX_MS.
   // Chave do agente = jogo|agente (session_id fora da chave): duas sessoes do mesmo agente compartilham a rodada; o Stop de uma encerra a de ambas.
   private rodadas = new Map<number, number>();
 
   // Ferias: a view factory_agent_ultimo (ultimo e primeiro evento de cada agente) e o dono do dado. Sem historico de 1 semana, ninguem esta de ferias.
   private async carregarFerias(): Promise<void> {
+    this.aplicarFeriasManuais();
     const { data, error } = await sb.from('factory_agent_ultimo').select('game,agent,ultimo,primeiro');
     if (error || !data || data.length === 0) return;
     const rows = data as unknown as Array<{ game: string; agent: string; ultimo: string; primeiro: string }>;
@@ -89,9 +103,24 @@ export class FactoryTransport implements MessageTransport {
     const ult = new Map(rows.map((r) => [`${r.game}|${r.agent}`, Date.parse(r.ultimo)]));
     const corte = Date.now() - FERIAS_MS;
     for (const [id, k] of this.keys) {
+      if (this.feriasManual.has(id)) continue;
       if ((ult.get(`${k.game}|${k.agent}`) ?? inicio) >= corte) continue;
       this.ferias.add(id);
       escritorio()?.factoryFerias(id, true);
+    }
+  }
+
+  // Idempotente: o personagem pode ainda nao existir no escritorio, entao tenta de novo ate o evento do proprio agente.
+  private aplicarFeriasManuais(): void {
+    const o = escritorio();
+    if (!o) return;
+    for (const id of this.feriasManual) {
+      o.factoryFerias(id, true, true);
+      // como as ferias automaticas: ja nasce na espreguicadeira, sem caminhar pelo escritorio (so na primeira vez)
+      if (!this.feriasTeleportados.has(id)) {
+        o.factoryTeleport(id);
+        if (this.naPiscina(id)) this.feriasTeleportados.add(id);
+      }
     }
   }
 
@@ -200,6 +229,11 @@ export class FactoryTransport implements MessageTransport {
         setInterval(rodada, 80000);
         setInterval(() => this.settleStale(), 2000);
       }, 200);
+      // ?chamar=<slug>/<papel>: 20 s depois chega um evento ao vivo desse agente (confere que so ele sai das ferias).
+      const chamar = new URLSearchParams(location.search).get('chamar')?.split('/');
+      if (chamar?.length === 2) {
+        setTimeout(() => this.handle({ ts: new Date().toISOString(), game: chamar[0], session_id: 's', agent: chamar[1], agent_id: null, tool: 'Read', target: 'x', event: 'PreToolUse' }), 20000);
+      }
       tick();
       setInterval(tick, 1500);
       return;
@@ -353,6 +387,10 @@ export class FactoryTransport implements MessageTransport {
     registry.setSquad(game, m.squad);
     for (const role of Object.keys(m.equipe)) this.agentFor({ game, agent: role } as FactoryEvent);
     for (const id of this.keys.keys()) this.sendTeamInfo(id);
+    if (m.ferias) {
+      for (const [id, k] of this.keys) if (k.game === game) this.feriasManual.add(id);
+      for (const ms of [0, 200, 400, 700, 1000, 1500, 2500, 4000, 6000, 8000, 12000, 20000]) setTimeout(() => this.aplicarFeriasManuais(), ms);
+    }
     this.drawBanner();
   }
 
@@ -376,7 +414,12 @@ export class FactoryTransport implements MessageTransport {
     const id = this.agentFor(e);
     this.lastSeen.set(id, new Date(e.ts).getTime());
     // voltou a ter demanda: acaba as ferias (evento antigo do historico nao conta)
-    if (this.ferias.size > 0 && Date.now() - new Date(e.ts).getTime() < FERIAS_MS && this.ferias.delete(id)) escritorio()?.factoryFerias(id, false);
+    if (this.feriasManual.has(id)) {
+      if (new Date(e.ts).getTime() >= this.abriuEm - 1000) {
+        this.feriasManual.delete(id);
+        escritorio()?.factoryFerias(id, false);
+      }
+    } else if (this.ferias.size > 0 && Date.now() - new Date(e.ts).getTime() < FERIAS_MS && this.ferias.delete(id)) escritorio()?.factoryFerias(id, false);
     const stack = this.pending.get(id) ?? [];
     this.pending.set(id, stack);
 
