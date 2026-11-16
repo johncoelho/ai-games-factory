@@ -7,6 +7,7 @@ import { CharacterState } from '../office/types.js';
 import { sair } from './gate.js';
 import { type Caixa, type ItemBalao, type ItemPilula, posicionar } from './etiquetas.js';
 import { IndicadoresFabrica, KanbanSquad } from './Quadros.js';
+import { Radio } from './Radio.js';
 import { Recados } from './Recados.js';
 import { Reuniao } from './Reuniao.js';
 import { registry } from './registry.js';
@@ -740,6 +741,7 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
         <span><i style={{ color: '#6FCF97' }}>●</i> {[...officeState.characters.values()].filter((c) => c.isHuman && c.humanKind !== 'recep' && (c.remote || c.id === MY_ID)).length} online</span>
         <span>clique ou WASD para andar</span>
       </div>
+      <Radio />
       {perto && (
         <div style={{ position: 'fixed', left: '50%', bottom: 28, transform: 'translateX(-50%)', zIndex: 25, minWidth: 280, background: '#0F1318', border: '1px solid #7AD1E0', padding: '8px 14px', font: '13px ' + MONO, color: '#EEF1F6' }}>
           <div style={{ color: '#7AD1E0', fontSize: 10, letterSpacing: '.14em' }}>AGENTE POR PERTO · {perto.squad}</div>
