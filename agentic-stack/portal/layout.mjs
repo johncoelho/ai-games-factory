@@ -39,6 +39,7 @@ export function buildLayout() {
   const areas = [];
   const furniture = [];
   const rooms = [];
+  const faixas = new Map(); // faixa de nome de cada sala (linha do piso onde o nome e escrito): as etiquetas dos agentes nao a cobrem
   const at = (c, r) => r * COLS + c;
 
   const floor = (c0, r0, w, h, f) => {
@@ -51,6 +52,7 @@ export function buildLayout() {
   const area = (label, color, c0, r, w) => {
     if (!areas.find((a) => a.label === label)) areas.push({ label, color });
     for (let c = c0; c < c0 + w; c++) areaTiles[at(c, r)] = label;
+    faixas.set(label, { col: c0, row: r, w });
   };
 
   // pisos
@@ -232,6 +234,7 @@ export function buildLayout() {
     rooms.push({ id: 'ceo', type: 'ceo', label: 'CEO', x, y, w: 9, h: H, seat: { col: x + 4, row: y + 4 } });
   }
 
+  for (const r of rooms) { const f = faixas.get(r.label); if (f) r.faixa = f; }
   const layout = {
     version: 1,
     cols: COLS,

@@ -185,7 +185,14 @@ export class OfficeState {`,
   /** Fabrica: ferias. Liga: reserva uma espreguicadeira na piscina. Desliga (voltou a ter demanda): solta a espreguicadeira. */
   factoryFerias(id: number, on: boolean, fixa = false): void {
     const ch = this.characters.get(id);
-    if (!ch || ch.isHuman || !ch.loungeSeatId || !!ch.ferias === on) return;
+    if (!ch || ch.isHuman || !ch.loungeSeatId) return;
+    if (on && ch.ferias && fixa && !ch.feriasFixa) {
+      // ja de ferias automaticas e entrou nas manuais: mantem a espreguicadeira e passa a nao fazer passeios
+      ch.feriasFixa = true;
+      if (ch.visitSeatId && !ch.inMeeting) this.factoryEndVisit(ch);
+      return;
+    }
+    if (!!ch.ferias === on) return;
     if (on) {
       const alvo = this.visitSeat('pool');
       if (!alvo) return;
@@ -834,7 +841,7 @@ const { layout, rooms, hall } = buildLayout();
 fs.writeFileSync(layoutFile, JSON.stringify(layout));
 fs.writeFileSync(
   path.join(root, "webview-ui/src/factory/rooms.ts"),
-  ["// gerado por portal/layout.mjs", "export const HALL_START = { col: " + hall.col + ", row: " + hall.row + " };", "export const MAP_COLS = " + layout.cols + ";", "export const MAP_ROWS = " + layout.rows + ";", "export const ROOMS: { id: string; type: string; label: string; x: number; y: number; w: number; h: number; spawn?: { col: number; row: number }; seat?: { col: number; row: number } }[] = " + JSON.stringify(rooms) + ";", ""].join(String.fromCharCode(10)),
+  ["// gerado por portal/layout.mjs", "export const HALL_START = { col: " + hall.col + ", row: " + hall.row + " };", "export const MAP_COLS = " + layout.cols + ";", "export const MAP_ROWS = " + layout.rows + ";", "export const ROOMS: { id: string; type: string; label: string; x: number; y: number; w: number; h: number; spawn?: { col: number; row: number }; seat?: { col: number; row: number }; faixa?: { col: number; row: number; w: number } }[] = " + JSON.stringify(rooms) + ";", ""].join(String.fromCharCode(10)),
 );
 
 console.log("patches da fabrica aplicados");

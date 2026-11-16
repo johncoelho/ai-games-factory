@@ -443,6 +443,11 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
   const fixas: Caixa[] = [];
   const sprites: Array<Caixa & { id: number }> = [];
   const esc = (project.toScreenX(16) - project.toScreenX(0)) / 16; // px de tela por px do mundo
+  // faixa de nome de cada sala (PISCINA, SQUAD ..., CAFE E LANCHE): obstaculo fixo, nenhuma etiqueta a cobre
+  for (const r of ROOMS) {
+    const f = r.faixa;
+    if (f) fixas.push({ l: project.toScreenX(f.col * 16), t: project.toScreenY(f.row * 16), w: f.w * 16 * esc, h: 16 * esc });
+  }
   const pilulas: Array<{ id: number; x: number; sigla: string; corSt: string; sentado: number; chy: number; tc: number; tr: number }> = [];
   const MONO_FONTE = (px: number) => '700 ' + px + 'px ' + MONO;
 

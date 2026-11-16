@@ -114,10 +114,16 @@ export function posicionar(
     for (const it of ordem) {
       if (ignorar.has(it.id)) continue;
       const l = it.x - it.w / 2;
+      // a pilula tambem nao cobre o sprite (rosto e corpo) de outro agente
+      const emSprite = (t: number) => {
+        for (let i = 0; i < sprites.length; i++) if (sprites[i].id !== it.id && cruza(l, t, it.w, it.h, sprites[i])) return true;
+        return false;
+      };
+      const ocupado = (t: number) => bate(obst, l, t, it.w, it.h) || emSprite(t);
       let kn = 0;
-      while (kn < MAX_DEGRAUS && bate(obst, l, it.base - kn * passo, it.w, it.h)) kn++;
+      while (kn < MAX_DEGRAUS && ocupado(it.base - kn * passo)) kn++;
       let k = Math.max(kn, retidos.get(it.id) ?? 0);
-      while (k < MAX_DEGRAUS && bate(obst, l, it.base - k * passo, it.w, it.h)) k++;
+      while (k < MAX_DEGRAUS && ocupado(it.base - k * passo)) k++;
       const t = it.base - k * passo;
       // pilulas que se tocam (no lugar natural ou no final) formam um grupo
       for (let i = 0; i < obst.length; i++) {
@@ -126,7 +132,7 @@ export function posicionar(
       }
       const lim = it.limite;
       const fora = !!lim && (t < lim.t || l < lim.l || l + it.w > lim.r);
-      if (k > LIMITE_PILHA || fora || bate(obst, l, t, it.w, it.h)) ruim.add(it.id);
+      if (k > LIMITE_PILHA || fora || ocupado(t)) ruim.add(it.id);
       obst.push({ l, t, w: it.w, h: it.h });
       donos.push(it.id);
       out.set(it.id, { top: t, degraus: k, natural: kn, colapsa: false });
