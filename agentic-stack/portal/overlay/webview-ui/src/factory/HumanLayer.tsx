@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import { CHARACTER_SITTING_OFFSET_PX, TOOL_OVERLAY_VERTICAL_OFFSET } from '../constants.js';
 import type { OfficeState } from '../office/engine/officeState.js';
@@ -52,6 +53,16 @@ const larguraTexto = (fonte: string, texto: string, espaco = 0): number => {
 const MONO = "ui-monospace,Consolas,'JetBrains Mono',monospace";
 
 // Avatares humanos (CEO e visitantes), etiquetas que distinguem humano de agente (IA) e o painel de quem esta por perto.
+// Camada fixa (menu, legenda, popup, paineis): vai para o body porque o painel do celular tem transform e 200% de largura,
+// e dentro dele position:fixed deixa de valer em relacao a janela (issue #17). As regras de celular usam o mesmo corte do Pixel Agents (MOBILE_MEDIA_QUERY).
+// Paineis abertos: faixa propria (abaixo da radio, acima da barra de cartoes) e z-index acima de legenda, popup e radio.
+const CSS_FIXO =
+  '@media (max-width:768px), ((pointer:coarse) and (max-width:1024px)){' +
+  '.factory-legenda{left:8px!important;right:8px!important;bottom:68px!important;flex-wrap:wrap;gap:4px 12px!important;font-size:11px!important;padding:6px 8px!important}' +
+  '.factory-perto{left:50%!important;right:auto!important;transform:translateX(-50%)!important;bottom:136px!important;min-width:0!important;width:max-content;max-width:calc(100vw - 16px)!important;box-sizing:border-box}' +
+  '.factory-painel{left:8px!important;right:8px!important;top:auto!important;bottom:68px!important;z-index:40!important;width:auto!important;max-width:none!important;max-height:calc(100vh - 200px)!important;box-sizing:border-box}' +
+  '}';
+
 export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
   const [, setTick] = useState(0);
   const [perto, setPerto] = useState<Perto | null>(null);
@@ -713,9 +724,12 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
   return (
     <>
       {nodes}
-      {painel?.tipo === 'kanban' && <KanbanSquad game={painel.game} onClose={() => setPainel(null)} />}
-      {painel?.tipo === 'ind' && <IndicadoresFabrica officeState={officeState} onClose={() => setPainel(null)} />}
-      <div style={{ position: 'fixed', left: 16, top: 84, zIndex: 25, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+      {painel?.tipo === 'kanban' && createPortal(<KanbanSquad game={painel.game} onClose={() => setPainel(null)} />, document.body)}
+      {painel?.tipo === 'ind' && createPortal(<IndicadoresFabrica officeState={officeState} onClose={() => setPainel(null)} />, document.body)}
+      {createPortal(
+      <>
+      <style>{CSS_FIXO}</style>
+      <div className="factory-col" style={{ position: 'fixed', left: 16, top: 84, zIndex: 25, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
         <div style={{ font: '700 11px ' + MONO, color: isOwner() ? '#FFC95C' : '#6FCF97', letterSpacing: '.08em' }}>{me.name}</div>
         <button style={botao} onClick={trocarAvatar}>Trocar avatar/nome</button>
         <button style={{ ...botao, ...(mic ? { borderColor: '#6FCF97', color: '#6FCF97' } : {}) }} onClick={() => alternarMic.current()}>
@@ -734,21 +748,24 @@ export function HumanLayer({ officeState, containerRef, zoom, panRef }: Props) {
         )}
         <button style={botao} onClick={sair}>Sair</button>
       </div>
-      <div style={{ position: 'fixed', left: 16, bottom: 96, zIndex: 25, display: 'flex', gap: 16, font: '14px ' + MONO, color: '#EEF1F6', background: 'rgba(8,9,12,.92)', border: '1px solid #262E3A', padding: '8px 14px' }}>
+      <div className="factory-legenda" style={{ position: 'fixed', left: 16, bottom: 96, zIndex: 25, display: 'flex', gap: 16, font: '14px ' + MONO, color: '#EEF1F6', background: 'rgba(8,9,12,.92)', border: '1px solid #262E3A', padding: '8px 14px' }}>
         <span><b style={{ color: '#7AD1E0', border: '1px solid #7AD1E0', padding: '0 6px', borderRadius: 6 }}>IA</b> agente</span>
         <span><b style={{ background: '#FFC95C', color: '#08090C', padding: '1px 8px', borderRadius: 8 }}>HUMANO</b> pessoa (anel no chão)</span>
         <span><i style={{ color: '#6FCF97' }}>●</i> livre <i style={{ color: '#F2C94C' }}>●</i> aguardando <i style={{ color: '#EB5757' }}>●</i> ocupado</span>
         <span><i style={{ color: '#6FCF97' }}>●</i> {[...officeState.characters.values()].filter((c) => c.isHuman && c.humanKind !== 'recep' && (c.remote || c.id === MY_ID)).length} online</span>
         <span>clique ou WASD para andar</span>
       </div>
-      <Radio />
       {perto && (
-        <div style={{ position: 'fixed', left: '50%', bottom: 28, transform: 'translateX(-50%)', zIndex: 25, minWidth: 280, background: '#0F1318', border: '1px solid #7AD1E0', padding: '8px 14px', font: '13px ' + MONO, color: '#EEF1F6' }}>
+        <div className="factory-perto" style={{ position: 'fixed', right: 16, bottom: 28, zIndex: 25, minWidth: 280, background: '#0F1318', border: '1px solid #7AD1E0', padding: '8px 14px', font: '13px ' + MONO, color: '#EEF1F6' }}>
           <div style={{ color: '#7AD1E0', fontSize: 10, letterSpacing: '.14em' }}>AGENTE POR PERTO · {perto.squad}</div>
           <div style={{ fontWeight: 700, color: '#FFC95C' }}>{perto.nome} ({perto.papel})</div>
           <div style={{ color: '#A9B3C4' }}>{perto.atividade}</div>
         </div>
       )}
+      </>,
+      document.body,
+      )}
+      <Radio />
     </>
   );
 }

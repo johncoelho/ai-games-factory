@@ -1,21 +1,18 @@
 {
-  "name": "Pixel Agents",
-  "short_name": "Pixel Agents",
-  "description": "Pixel art office where your Claude Code agents come to life as animated characters",
+  "name": "AI Games Factory",
+  "short_name": "AI Games",
+  "description": "Escritório pixel art da fábrica de jogos: agentes, squads e esteira ao vivo (somente leitura).",
+  "lang": "pt-BR",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#1e1e2e",
-  "theme_color": "#1e1e2e",
+  "background_color": "#08090C",
+  "theme_color": "#08090C",
   "icons": [
-    {
-      "src": "icons/icon-256.png?v=2",
-      "sizes": "256x256",
-      "type": "image/png"
-    },
-    {
-      "src": "icons/icon-512.png?v=2",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
+    { "src": "icons/factory-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/factory-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/factory-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

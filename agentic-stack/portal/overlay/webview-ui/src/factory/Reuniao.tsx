@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import { SQUADS } from './config.js';
 import { type Entregas, entregas } from './changelog.js';
@@ -119,13 +120,16 @@ export function Reuniao({ game, onChange }: { game: string | null; onChange: (g:
           ))}
         </div>
       )}
-      {game && (
-        <div style={{ position: 'fixed', left: 200, top: 84, width: 340, maxHeight: '60vh', overflow: 'auto', zIndex: 26, background: '#0F1318', border: '1px solid #E6AC3F', padding: 12, font: '13px ' + MONO, color: '#A9B3C4' }}>
+      {game &&
+        createPortal(
+        <div className="factory-painel" style={{ position: 'fixed', left: 200, top: 84, width: 340, maxHeight: '60vh', overflow: 'auto', zIndex: 40, background: '#0F1318', border: '1px solid #E6AC3F', padding: 12, font: '13px ' + MONO, color: '#A9B3C4' }}>
           <div style={{ color: '#FFC95C', letterSpacing: '.12em', fontSize: 11 }}>REUNIÃO · {(nomes[game] ?? game).toUpperCase()}</div>
           <div style={{ fontSize: 11, color: '#5C6678', marginBottom: 6 }}>o time foi chamado para a sala de reunião; entregas pelas release notes do repo</div>
           {corpo}
         </div>
-      )}
+          ,
+          document.body,
+        )}
     </>
   );
 }

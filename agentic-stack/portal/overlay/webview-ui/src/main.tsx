@@ -68,3 +68,10 @@ async function main() {
 }
 
 main().catch(console.error);
+
+// PWA: service worker simples (so o shell estatico; dados ao vivo nunca passam pelo cache). Ver portal/sw.template.js.
+if ('serviceWorker' in navigator && window.isSecureContext) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => undefined);
+  });
+}

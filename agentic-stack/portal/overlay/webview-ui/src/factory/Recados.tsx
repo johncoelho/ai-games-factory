@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import { isOwner, me } from './session.js';
 import { sb } from './supabase.js';
@@ -174,13 +175,14 @@ export function Recados() {
       <button style={{ ...discreto, ...(naoLidos || novasRespostas.length ? { borderColor: '#FFC95C', color: '#FFC95C' } : {}) }} onClick={abrir}>
         {rotulo}
       </button>
-      {aviso && !aberto && (
-        <div style={{ position: 'fixed', left: 200, top: 84, zIndex: 40, background: '#0F1318', border: '1px solid #FFC95C', color: '#FFC95C', font: '700 13px ' + MONO, padding: '10px 14px', cursor: 'pointer' }} onClick={() => { setAviso(''); abrir(); }}>
+      {aviso && !aberto && createPortal(
+        <div className="factory-painel" style={{ position: 'fixed', left: 200, top: 84, zIndex: 40, background: '#0F1318', border: '1px solid #FFC95C', color: '#FFC95C', font: '700 13px ' + MONO, padding: '10px 14px', cursor: 'pointer' }} onClick={() => { setAviso(''); abrir(); }}>
           ✉ {aviso} — clique para abrir
-        </div>
+        </div>,
+        document.body,
       )}
-      {aberto && (
-        <div style={{ position: 'fixed', left: 200, top: 84, zIndex: 40, ...caixa }}>
+      {aberto && createPortal(
+        <div className="factory-painel" style={{ position: 'fixed', left: 200, top: 84, zIndex: 40, ...caixa }}>
           {dono ? (
             <>
               <div style={{ color: '#FFC95C', fontWeight: 700, marginBottom: 8 }}>CAIXA DE ENTRADA</div>
@@ -232,7 +234,8 @@ export function Recados() {
               ))}
             </>
           )}
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

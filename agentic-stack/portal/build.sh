@@ -36,4 +36,5 @@ cp -r dist/webview/. "$OUT/"
 rm -f "$OUT/Screenshot.jpg" "$OUT/banner.png"
 cp LICENSE "$OUT/LICENSE-pixel-agents.txt"
 cp "$HERE/CREDITS.txt" "$OUT/CREDITS.txt"
+node "$HERE/pwa.mjs" "$OUT"   # PWA: index.html, manifest (overlay) e service worker com a versao do build
 echo "pronto: $OUT"
