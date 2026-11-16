@@ -453,7 +453,7 @@ import { overlayProjection } from '../projection.js';`,
   [
     `              {showContextGauge && (
                 <div`,
-    `              {isSelected && !isSub && <FactoryIssues game={ch.directoryName} label={ch.agentName} />}
+    `              {isSelected && !isSub && <FactoryIssues game={ch.directoryName} label={ch.agentName} id={id} />}
               {showContextGauge && (
                 <div`,
   ],

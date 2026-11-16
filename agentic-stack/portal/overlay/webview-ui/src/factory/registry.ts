@@ -9,6 +9,8 @@ const agents = new Map<number, AgentInfo>();
 const squads = new Map<string, string>();
 const activity = new Map<number, string>();
 const emRodada = new Set<number>();
+// Issue ativa de cada agente (owner/repo#N), vinda do evento; limpa quando ele descansa ou a rodada acaba.
+const issueAtiva = new Map<number, string>();
 const listeners = new Set<() => void>();
 let version = 0;
 
@@ -38,6 +40,13 @@ export const registry = {
     else emRodada.delete(id);
     notify();
   },
+  setIssue(id: number, ref: string | null): void {
+    if ((issueAtiva.get(id) ?? null) === ref) return;
+    if (ref) issueAtiva.set(id, ref);
+    else issueAtiva.delete(id);
+    notify();
+  },
+  issue: (id: number): string | undefined => issueAtiva.get(id),
   rodada: (id: number): boolean => emRodada.has(id),
   activity: (id: number): string => activity.get(id) ?? '',
   agentIds: (): number[] => [...agents.keys()],

@@ -61,6 +61,65 @@ function sessionCost(transcript) {
   return null;
 }
 
+// issue ativa (owner/repo#N), sem rede e sem ler o prompt. Ordem: env FACTORY_ISSUE; branch (issue-<n> ou <n>-slug) + remote origin.
+// Worktree: ".git" e um arquivo "gitdir: ..." e o config fica no diretorio comum (arquivo commondir). Qualquer falha = sem issue.
+const ISSUE_RE = /^[A-Za-z0-9-]{1,39}\/[A-Za-z0-9._-]{1,100}#[0-9]{1,7}$/;
+function gitDirs(cwd) {
+  let dir = cwd;
+  for (let i = 0; i < 12 && dir; i++) {
+    const g = path.join(dir, ".git");
+    try {
+      const st = fs.statSync(g);
+      if (st.isDirectory()) return { head: path.join(g, "HEAD"), common: g };
+      const m = /^gitdir:\s*(.+)$/m.exec(fs.readFileSync(g, "utf8"));
+      if (m) {
+        const gd = path.resolve(dir, m[1].trim());
+        let common = gd;
+        try {
+          common = path.resolve(gd, fs.readFileSync(path.join(gd, "commondir"), "utf8").trim());
+        } catch {}
+        return { head: path.join(gd, "HEAD"), common };
+      }
+    } catch {}
+    const up = path.dirname(dir);
+    if (up === dir) break;
+    dir = up;
+  }
+  return null;
+}
+function repoOrigin(common) {
+  try {
+    const cfg = fs.readFileSync(path.join(common, "config"), "utf8");
+    const sec = /\[remote "origin"\]([^[]*)/.exec(cfg)?.[1] || "";
+    const url = /^\s*url\s*=\s*(.+?)\s*$/m.exec(sec)?.[1] || "";
+    const m = /github\.com[:/]([A-Za-z0-9-]+)\/([A-Za-z0-9._-]+?)(?:\.git)?\/?$/.exec(url);
+    return m && m[2] !== "." && m[2] !== ".." ? `${m[1]}/${m[2]}` : null;
+  } catch {
+    return null;
+  }
+}
+function activeIssue(cwd) {
+  try {
+    const env = (process.env.FACTORY_ISSUE || "").trim();
+    if (ISSUE_RE.test(env) && Number(env.split("#")[1]) > 0 && !/\/\.{1,2}#/.test(env)) return env;
+    if (!cwd) return null;
+    const g = gitDirs(cwd);
+    if (!g) return null;
+    const repo = repoOrigin(g.common);
+    const num = /^\d{1,7}$/.exec(env.replace(/^#/, ""))?.[0]; // FACTORY_ISSUE so com o numero: usa o remote
+    let n = num;
+    if (!n) {
+      const br = /^ref:\s*refs\/heads\/(\S+)/.exec(fs.readFileSync(g.head, "utf8"))?.[1] || "";
+      n = /^issue-(\d{1,7})$/.exec(br)?.[1] || /^(\d{1,7})-[a-z][a-z0-9._-]*$/.exec(br)?.[1];
+    }
+    if (!n || Number(n) === 0 || !repo) return null;
+    const r = `${repo}#${Number(n)}`;
+    return ISSUE_RE.test(r) ? r : null;
+  } catch {
+    return null;
+  }
+}
+
 function target(h) {
   const i = h.tool_input || {};
   const f = i.file_path || i.path || i.notebook_path;
@@ -84,6 +143,8 @@ try {
     duration_ms: h.duration_ms ?? null,
     cost_usd: ["Stop", "SessionEnd", "SubagentStop"].includes(ev) ? sessionCost(h.transcript_path) : null,
   };
+  const issue = activeIssue(h.cwd);
+  if (issue) e.issue = issue; // evento sem issue nao manda o campo
   const body = JSON.stringify(e);
   const send = (url, key) =>
     fetch(url, {

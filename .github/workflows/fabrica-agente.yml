@@ -51,15 +51,20 @@ jobs:
               --jq '[.[] | select(([.labels[].name] | index("triado")) | not)] | sort_by(.number) | .[0].number // empty')
             [ -z "$NUM" ] && pular "nenhuma issue sem triagem"
           fi
+          # validacao do numero (so digitos, 1 a 7 como o check do banco) antes de qualquer uso em gh issue view
+          printf '%s' "$NUM" | grep -Eq '^[0-9]{1,7}$' || pular "numero de issue invalido"
           ESTADO=$(gh issue view "$NUM" -R "$REPO" --json state,labels --jq '.state')
           [ "$ESTADO" != "OPEN" ] && pular "issue fechada"
           ROTULOS=$(gh issue view "$NUM" -R "$REPO" --json labels --jq '[.labels[].name] | join(",")')
           PAPEL=principal
           if [ -f .claude/agents/suporte.md ] && echo ",$ROTULOS," | grep -qiE ",(origem:jogo|bug|feedback|suporte|melhoria),"; then PAPEL=suporte; fi
+          ISSUE_REF=""
+          printf '%s' "$REPO" | grep -Eq '^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$' && ISSUE_REF="$REPO#$NUM"
           {
             echo "pular=false"
             echo "numero=$NUM"
             echo "papel=$PAPEL"
+            echo "issue=$ISSUE_REF"
           } >> "$GITHUB_OUTPUT"
 
       - name: Sinal ao vivo - inicio
@@ -73,16 +78,23 @@ jobs:
           GAME: ${{ inputs.squad }}
           AGENTE: ${{ steps.alvo.outputs.papel }}
           SESSAO: ${{ github.run_id }}
+          ISSUE_REF: ${{ steps.alvo.outputs.issue }}
         run: |
           limpa() { printf '%s' "$1" | tr -cd 'A-Za-z0-9._-' | cut -c1-60; }
+          # issue ativa (owner/repo#N); sem issue valida o campo nem vai no corpo
+          ISSUE_JSON=""
+          printf '%s' "$ISSUE_REF" | grep -Eq '^[A-Za-z0-9-]+/[A-Za-z0-9._-]+#[0-9]{1,7}$' && ISSUE_JSON=",\"issue\":\"$ISSUE_REF\""
           curl -sS --max-time 5 -X POST "$FACTORY_EVENTS_URL" \
             -H "apikey: $FACTORY_EVENTS_KEY" -H "Authorization: Bearer $FACTORY_EVENTS_KEY" \
             -H "Content-Type: application/json" -H "Prefer: return=minimal" \
-            -d "{\"game\":\"$(limpa "$GAME")\",\"agent\":\"$(limpa "$AGENTE")\",\"event\":\"SessionStart\",\"session_id\":\"$(limpa "$SESSAO")\"}" || true
+            -d "{\"game\":\"$(limpa "$GAME")\",\"agent\":\"$(limpa "$AGENTE")\",\"event\":\"SessionStart\",\"session_id\":\"$(limpa "$SESSAO")\"$ISSUE_JSON}" || true
 
       - name: Agente (principal ou suporte)
         if: steps.alvo.outputs.pular != 'true'
         uses: anthropics/claude-code-action@v1
+        env:
+          # o hook da fabrica (factory-hook.mjs) marca cada evento do agente com esta issue (owner/repo#N)
+          FACTORY_ISSUE: ${{ steps.alvo.outputs.issue }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.FABRICA_GH_TOKEN }}
@@ -102,7 +114,7 @@ jobs:
             - Ao terminar a triagem, ponha o rotulo `triado` na issue (crie-o se nao existir) e garanta que ela esta no quadro com a etapa certa.
             - Nunca gaste dinheiro, publique, faca release ou altere dados. Esta rodada so faz triagem, delegacao, resposta e organizacao do quadro.
 
-            Se o papel for `principal` (o nome vem de `equipe.principal` do `factory.yaml`: CTO, CMO, PM...): leia `CLAUDE.md` (se existir), `MEMORY.md` e `factory.yaml`, faca a triagem da issue: classifique (bug, melhoria, ideia, pedido do CEO, duvida), coloque no quadro e na etapa certa (bug claro vai para a fila; melhoria ou ideia que depende do CEO vai para "Aguardando aprovacao"; pedido que ja tem aprovacao vai para a fila), e delegue: comente na issue qual agente do time (`.claude/agents`) deve pegar e o que se espera, e use a ferramenta Task para pedir ao PO ou ao Tech Lead o criterio de aceite quando fizer falta.
+            Se o papel for `principal` (o nome vem de `equipe.principal` do `factory.yaml`: CTO, CMO, PM...): leia `CLAUDE.md` (se existir), `MEMORY.md` e `factory.yaml`, faca a triagem da issue: classifique (bug, melhoria, ideia, pedido do CEO, duvida), coloque no quadro e na etapa certa (bug claro vai para a fila; melhoria ou ideia que depende do CEO vai para "Aguardando aprovacao"; pedido que ja tem aprovacao vai para a fila), e delegue: comente na issue qual agente do time (`.claude/agents`) deve pegar e o que se espera, e use a ferramenta Task para pedir ao PO ou ao Tech Lead o criterio de aceite quando fizer falta. Ao delegar ao dev, peca que ele mova o cartao para Em andamento antes de comecar.
             Se o papel for `suporte`: leia a issue, responda a quem abriu (acolher, pedir o que falta, explicar o que ja se sabe) e classifique; se for bug real ou melhoria, escale ao principal comentando `🤖 Suporte -> principal:` com resumo, passos para reproduzir e a classificacao, e deixe a issue no quadro na etapa de entrada. Duvida respondida: comente e feche so se quem abriu confirmou.
             Termine com um resumo de uma linha do que foi feito.
 
@@ -117,9 +129,13 @@ jobs:
           GAME: ${{ inputs.squad }}
           AGENTE: ${{ steps.alvo.outputs.papel }}
           SESSAO: ${{ github.run_id }}
+          ISSUE_REF: ${{ steps.alvo.outputs.issue }}
         run: |
           limpa() { printf '%s' "$1" | tr -cd 'A-Za-z0-9._-' | cut -c1-60; }
+          # issue ativa (owner/repo#N); sem issue valida o campo nem vai no corpo
+          ISSUE_JSON=""
+          printf '%s' "$ISSUE_REF" | grep -Eq '^[A-Za-z0-9-]+/[A-Za-z0-9._-]+#[0-9]{1,7}$' && ISSUE_JSON=",\"issue\":\"$ISSUE_REF\""
           curl -sS --max-time 5 -X POST "$FACTORY_EVENTS_URL" \
             -H "apikey: $FACTORY_EVENTS_KEY" -H "Authorization: Bearer $FACTORY_EVENTS_KEY" \
             -H "Content-Type: application/json" -H "Prefer: return=minimal" \
-            -d "{\"game\":\"$(limpa "$GAME")\",\"agent\":\"$(limpa "$AGENTE")\",\"event\":\"Stop\",\"session_id\":\"$(limpa "$SESSAO")\"}" || true
+            -d "{\"game\":\"$(limpa "$GAME")\",\"agent\":\"$(limpa "$AGENTE")\",\"event\":\"Stop\",\"session_id\":\"$(limpa "$SESSAO")\"$ISSUE_JSON}" || true

@@ -12,6 +12,10 @@ export interface Issue {
   fechado?: boolean;
 }
 
+// Etapa sem acento, sem caixa e sem espacos nas pontas: "Em Produção" == "em producao".
+export const normEtapa = (s: string): string =>
+  s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+
 export const AVISO_PRIVADO = 'Token sem a permissão repo: mostrando só os títulos. Com ela, aparecem número e link de cada issue.';
 export const temPrivado = (itens: Issue[]): boolean => itens.some((i) => i.privado);
 export type Resultado =
@@ -46,6 +50,12 @@ async function quadro(game: string, todos = false): Promise<Issue[] | Resultado>
 
 export async function issuesDoPapel(game: string, role: string): Promise<Resultado> {
   if (import.meta.env.VITE_DEMO) {
+    // ?demoissue=1: o suporte nao tem cartao na etapa dele (confere "Nenhuma issue em ..." com o agente parado)
+    // ?demoitens=N: lista longa na etapa (confere o limite de altura do painel no celular)
+    const nd = Number(new URLSearchParams(location.search).get('demoitens'));
+    if (nd > 0 && role === 'po')
+      return { estado: 'ok', etapas: ['Fila'], itens: Array.from({ length: nd }, (_, k) => ({ numero: 100 + k, titulo: 'Issue de exemplo numero ' + (k + 1) + ' com titulo comprido', url: '#', etapa: 'Fila' })) };
+    if (role === 'suporte') return { estado: 'ok', etapas: ['Fila'], itens: [] };
     return {
       estado: 'ok',
       etapas: ['Em andamento'],
@@ -57,7 +67,35 @@ export async function issuesDoPapel(game: string, role: string): Promise<Resulta
   if (etapas.length === 0) return { estado: 'ok', itens: [], etapas };
   const q = await quadro(game);
   if (!Array.isArray(q)) return q;
-  return { estado: 'ok', etapas, itens: q.filter((i) => etapas.includes(i.etapa)) };
+  const alvo = new Set(etapas.map(normEtapa));
+  return { estado: 'ok', etapas, itens: q.filter((i) => alvo.has(normEtapa(i.etapa))) };
+}
+
+export interface IssueAgora {
+  numero: number;
+  /** URL do cartao no quadro, ou a montada de owner/repo quando a issue esta fora do quadro. */
+  url: string;
+  titulo?: string;
+  /** false so quando o quadro foi lido e a issue nao esta nele; quadro indisponivel = undefined (nao afirma nada). */
+  noQuadro?: boolean;
+}
+
+// "owner/repo#N" (o que o evento carrega) -> titulo do cache do quadro (o mesmo cache de 30 s). Fora do quadro: so o link.
+export async function issueAgora(game: string, ref: string): Promise<IssueAgora> {
+  const m = /^([A-Za-z0-9-]+)\/([A-Za-z0-9._-]+)#(\d+)$/.exec(ref);
+  if (!m) return { numero: 0, url: '#' };
+  const numero = Number(m[3]);
+  const url = `https://github.com/${m[1]}/${m[2]}/issues/${numero}`;
+  const demo = !!import.meta.env.VITE_DEMO;
+  const q = demo ? await statusDoSquad(game) : await quadro(game);
+  const todos = Array.isArray(q) ? q : q.estado === 'ok' ? q.itens : null;
+  const itens = demo && todos ? todos.filter((i) => !i.privado) : todos; // demo: o cartao privado de exemplo nao deve esconder o "fora do quadro"
+  if (!itens) return { numero, url };
+  const alvo = `/${m[1]}/${m[2]}/issues/${numero}`.toLowerCase();
+  const hit = itens.find((i) => i.numero === numero && (i.url === '#' || i.url.toLowerCase().endsWith(alvo)));
+  if (hit) return { numero, url: hit.url === '#' ? url : hit.url, titulo: hit.titulo, noQuadro: true };
+  // token sem permissao repo: cartoes privados chegam sem numero, entao nao da para afirmar que a issue esta fora do quadro
+  return { numero, url, noQuadro: itens.some((i) => i.privado) ? undefined : false };
 }
 
 // Status do quadro inteiro do squad (reuniao): so o dono le, com o mesmo cache curto.

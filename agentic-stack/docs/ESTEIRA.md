@@ -28,7 +28,7 @@ GitHub Projects "Agentic Stack · Esteira", campo **Status** (visão em quadro).
 | **Novo** | chegou, sem triagem | CTO |
 | **Aguardando aprovação** | melhoria com proposta do PO | **John** |
 | **Fila** | pronto para fazer, na ordem | PO ordena; a rodada pega a Fila inteira como um lote |
-| **Em andamento** | Dev + Tech Lead trabalhando | Dev |
+| **Em andamento** | Dev + Tech Lead trabalhando | Dev (move o cartão ao começar a issue) |
 | **Publicado** | no ar (site) e aguardando a conferência visual | Dev (após APROVADO do Tech Lead e do QA local) |
 | **Concluído** | QA aprovou no Chrome do John, issue fechada | QA |
 
@@ -53,6 +53,10 @@ O CTO escolhe o modelo e o esforço de cada delegação pela complexidade da dem
 - Complexa ou arriscada (desenho técnico novo, segurança, bug de causa desconhecida, mudança em vários arquivos que se influenciam): opus, esforço alto, só para Tech Lead e Dev quando necessário.
 
 Haiku só onde o resultado se confere por teste; se falhar, sobe um degrau em vez de repetir. Revisão de diff do Tech Lead é Sonnet por padrão; Opus só para desenho e segurança. Sessões novas por assunto e compactar cedo economizam mais que trocar o modelo do console.
+
+## Branch por issue
+
+Cada issue tem a sua branch (e worktree): `issue-<n>` (ou `<n>-slug`), com `<n>` o número da issue no repo do jogo. O hook da fábrica (`hooks/factory-hook.mjs`) lê essa branch e o `remote.origin` e marca cada evento com `owner/repo#N`; na rodada do Actions a issue vem de `FACTORY_ISSUE`. É isso que faz o portal mostrar "AGORA: #N título" no painel do agente. Branch que não segue o padrão (`main`, `release-2026`) não marca issue. O **Dev move o cartão para Em andamento** ao começar e commita com `Refs #N`.
 
 ## Rodada da esteira
 

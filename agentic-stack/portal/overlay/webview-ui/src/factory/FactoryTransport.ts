@@ -25,6 +25,8 @@ interface FactoryEvent {
   event: string;
   tool: string | null;
   target: string | null;
+  /** owner/repo#N; so o dono le (a view publica nao tem a coluna). */
+  issue?: string | null;
 }
 
 const READING_TOOLS = ['Read', 'Grep', 'Glob', 'WebFetch', 'WebSearch'];
@@ -42,6 +44,7 @@ const VERB: Record<string, string> = {
   Task: 'Task',
   Agent: 'Task',
 };
+const ISSUE_REF = /^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+#\d+$/;
 const IDLE_AFTER_MS = 2 * 60 * 1000;
 // No build demo com ?semstop=1 o limite e 25 s para o QA conferir o timeout; em producao e sempre 20 min.
 const RODADA_MAX_MS = import.meta.env.VITE_DEMO && location.search.includes('semstop') ? 25 * 1000 : 20 * 60 * 1000; // rodada do workflow (SessionStart sem Stop): tempo maximo = timeout do job
@@ -202,10 +205,15 @@ export class FactoryTransport implements MessageTransport {
         ['naval-battle', 'dev', 'Write', 'src/Fleet.kt'],
       ] as const;
       let n = 0;
+      // ?demoissue=1: estados fixos do painel (sem Stop): tech-lead com issue do quadro, dev com issue fora do quadro, qa sem issue; suporte e po parados.
+      const demoIssue = new URLSearchParams(location.search).has('demoissue');
+      const issueDemo: Record<string, string> = { 'tech-lead': 'johncoelho/naval-battle#64', dev: 'johncoelho/ai-games-factory#18' };
       const tick = () => {
         const [game, agent, tool, target] = squad[n++ % squad.length];
-        const base = { ts: new Date().toISOString(), game, session_id: 's', agent, agent_id: null, tool, target };
+        if (demoIssue && agent === 'suporte') return;
+        const base = { ts: new Date().toISOString(), game, session_id: 's', agent, agent_id: null, tool, target, issue: demoIssue ? issueDemo[agent] ?? null : null };
         this.handle({ ...base, event: 'PreToolUse' });
+        if (demoIssue) return;
         setTimeout(() => this.handle({ ...base, ts: new Date().toISOString(), event: 'PostToolUse' }), 2500);
         setTimeout(() => this.handle({ ...base, ts: new Date().toISOString(), event: 'Stop' }), 5000);
       };
@@ -247,7 +255,7 @@ export class FactoryTransport implements MessageTransport {
 
     // CEO: tabela completa. Consulta periodica em vez de websocket: no Android o navegador derruba a conexao em
     // segundo plano e os eventos do intervalo se perdiam; a consulta por "ts maior que o ultimo" sempre recupera.
-    await this.poll('factory_events', 'ts,game,session_id,agent,agent_id,event,tool,target', (r) => r as FactoryEvent);
+    await this.poll('factory_events', 'ts,game,session_id,agent,agent_id,event,tool,target,issue', (r) => r as FactoryEvent);
   }
 
   private async visitorFeed(): Promise<void> {
@@ -328,6 +336,7 @@ export class FactoryTransport implements MessageTransport {
   }
 
   private rest(id: number): void {
+    registry.setIssue(id, null);
     this.pending.set(id, []);
     this.emit({ type: 'agentToolsClear', id });
     this.emit({ type: 'agentStatus', id, status: 'waiting' });
@@ -422,6 +431,9 @@ export class FactoryTransport implements MessageTransport {
     } else if (this.ferias.size > 0 && Date.now() - new Date(e.ts).getTime() < FERIAS_MS && this.ferias.delete(id)) escritorio()?.factoryFerias(id, false);
     const stack = this.pending.get(id) ?? [];
     this.pending.set(id, stack);
+    // issue ativa: so vale o formato owner/repo#N; Stop/descanso limpam em rest()
+    const parou = e.event === 'Stop' || e.event === 'SessionEnd' || e.event === 'SubagentStop';
+    if (!parou && typeof e.issue === 'string' && ISSUE_REF.test(e.issue)) registry.setIssue(id, e.issue);
 
     switch (e.event) {
       case 'PreToolUse': {
