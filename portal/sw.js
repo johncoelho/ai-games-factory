@@ -5,9 +5,9 @@
  * - todo o resto (JSON de layout, imagens, dados) vai direto para a rede, sem cache;
  * - a versao abaixo e gravada no build; ao mudar, os caches antigos sao apagados na ativacao e o SW novo assume na hora.
  */
-const VERSAO = '20261122161123-index-DCgUiL65';
+const VERSAO = '20261122195239-index-DadmqjiJ';
 const CACHE = 'factory-shell-' + VERSAO;
-const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/factory-192.png', './icons/factory-512.png'].concat(["./assets/browser-CN3qBirH.js","./assets/browserMock-DsoMnZBZ.js","./assets/index-DCgUiL65.js","./assets/index-LahxKHqq.css","./assets/rolldown-runtime-CNC7AqOf.js"]); // __ASSETS__: js/css com hash, gravados no build (abre offline na primeira visita)
+const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/factory-192.png', './icons/factory-512.png'].concat(["./assets/browser-CN3qBirH.js","./assets/browserMock-DLxAEyVu.js","./assets/index-DadmqjiJ.js","./assets/index-LahxKHqq.css","./assets/rolldown-runtime-CNC7AqOf.js"]); // __ASSETS__: js/css com hash, gravados no build (abre offline na primeira visita)
 const COM_HASH = /\/assets\/[^/]+-[A-Za-z0-9_-]{8}\.(?:js|css)$/;
 
 self.addEventListener('install', (e) => {
