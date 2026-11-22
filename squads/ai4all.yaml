@@ -1,0 +1,34 @@
+# Vai na raiz do repo do app como factory.yaml. Configuracao, nao copia de dado.
+# Contrato lido pelo portal do AGENTIC STACK.
+contrato: 1
+slug: ai4all
+nome: AI4ALL
+# Repo privado criado em 22/11/2026; quadro "AI4ALL · Esteira" = projeto 6.
+repo: github.com/johncoelho/ai4all
+quadro: { tipo: github-projects, owner: johncoelho, numero: 6 }
+squad: .claude/agents
+# Sem loja: APK interno (EAS preview) e web local; nada publicado em Play/App Store.
+lojas: []
+nome_squad: AI4ALL SQUAD
+# Nome de cada papel do squad (o portal mostra estes nomes; a chave e o nome do arquivo em .claude/agents).
+# Sobrenomes de figuras da computacao e do design, como no AGENTIC STACK TEAM.
+equipe:
+  principal: Turing
+  suporte: Shannon
+  po: Lovelace
+  tech-lead: McCarthy
+  dev: Knuth
+  designer: Rams
+  qa: Dijkstra
+  release: Hamilton
+# Etapas do quadro em que cada papel atua (as issues desse papel = cartoes nessas etapas). O portal mostra ao clicar no agente.
+# Quem move cada cartao esta em docs/ESTEIRA.md, coluna "Quem move".
+etapas:
+  principal: Novo, Aguardando aprovação, Fila, Em andamento, Em teste, Pronto para produção
+  suporte: Novo
+  po: Aguardando aprovação, Fila
+  tech-lead: Em andamento
+  dev: Em andamento
+  designer: Aguardando aprovação, Em andamento
+  qa: Em teste
+  release: Em teste, Pronto para produção
