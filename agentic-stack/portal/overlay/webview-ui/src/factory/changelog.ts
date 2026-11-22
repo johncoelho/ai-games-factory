@@ -29,7 +29,7 @@ export function entregas(game: string): Promise<Entregas> {
   if (hit && Date.now() - hit.t < 60_000) return hit.p;
   const ler = (url: string): Promise<string | null> => fetch(url).then((r) => (r.ok ? r.text() : null)).catch(() => null);
   const p = ler(`https://raw.githubusercontent.com/johncoelho/${game}/main/CHANGELOG.md`)
-    // repo privado (ex.: dominiogame): o Release mantem uma copia publica em squads/<jogo>.changelog.md no repo do site
+    // repo privado (ex.: ai4all): o Release mantem uma copia publica em squads/<jogo>.changelog.md no repo do site
     .then((t) => t ?? ler(`https://raw.githubusercontent.com/johncoelho/ai-games-factory/main/squads/${game}.changelog.md`))
     .then((t): Entregas => (t === null ? { estado: 'indisponivel' } : { estado: 'ok', itens: parseChangelog(t) }));
   cache.set(game, { t: Date.now(), p });

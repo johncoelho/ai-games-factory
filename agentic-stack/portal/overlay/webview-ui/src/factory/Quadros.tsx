@@ -16,13 +16,13 @@ const EXECUCAO: Record<string, string[]> = {
   // "Publicado" ainda conta como em andamento: falta a conferencia do QA antes de Concluido.
   'naval-battle': ['Em andamento', 'Publicado', 'Liberado para testes'],
   'agentic-stack': ['Em andamento', 'Publicado'],
-  dominiogame: ['Em andamento', 'Publicado', 'Em teste'],
+  ai4all: ['Em andamento', 'Em teste', 'Pronto para produção'],
   'marketing-squad': ['Validando', 'Construindo', 'Rodando', 'Diagnóstico'],
 };
 const FINAIS: Record<string, string[]> = {
   'naval-battle': ['Em produção', 'Concluído'],
   'agentic-stack': ['Concluído'],
-  dominiogame: ['Concluído'],
+  ai4all: ['Concluído'],
   'marketing-squad': ['Concluído'],
 };
 const faseDaEtapa = (slug: string, etapa: string): 'fila' | 'curso' | 'entregue' =>

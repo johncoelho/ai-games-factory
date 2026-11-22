@@ -1,5 +1,5 @@
 // Gera o mapa do escritorio da fabrica: 12 salas em 2 fileiras, ligadas por um corredor.
-// Fileira de cima: 4 salas de time (Naval Battle, Agentic Stack, Domínio/Monopoly, Marketing), sala de reuniao e cafe.
+// Fileira de cima: 4 salas de time (Naval Battle, Agentic Stack, AI4ALL, Marketing), sala de reuniao e cafe.
 // Fileira de baixo: sala de TV, recepcao, sala do CEO, bar e sinuca, sala de jogos e banheiro.
 // Devolve o layout do Pixel Agents e a lista de salas (usada para escolher mesa e sofa de cada agente).
 
@@ -22,7 +22,7 @@ const CEO_RUG_TRIM = { tile: 2, color: { h: 42, s: 60, b: -22, c: -40 } }; // bo
 export const SQUADS_MAPA = [
   { slug: 'naval-battle', label: 'SQUAD BATALHA NAVAL' },
   { slug: 'agentic-stack', label: 'AGENTIC STACK TEAM' },
-  { slug: 'dominiogame', label: 'SQUAD DOMÍNIO' },
+  { slug: 'ai4all', label: 'AI4ALL SQUAD' },
   { slug: 'marketing-squad', label: 'SQUAD MARKETING' },
 ];
 

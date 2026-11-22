@@ -121,12 +121,12 @@ export async function statusDoSquadTodos(game: string): Promise<Resultado> {
   if (import.meta.env.VITE_DEMO) {
     if (new URLSearchParams(location.search).get('demoerro') === game) return { estado: 'erro', msg: 'HTTP 502' };
     const mk = (etapa: string, n: number): Issue[] =>
-      Array.from({ length: n }, (_, k) => ({ numero: k + 1, titulo: etapa + ' ' + (k + 1), url: '#', etapa, fechado: /conclu|publicad|produ/i.test(etapa) }));
+      Array.from({ length: n }, (_, k) => ({ numero: k + 1, titulo: etapa + ' ' + (k + 1), url: '#', etapa, fechado: /conclu|publicad|^em produ/i.test(etapa) }));
     const demo: Record<string, [string, number][]> = {
       'naval-battle': [['Aguardando aprovação', 6], ['Fila', 5], ['Liberado para testes', 7], ['Em produção', 21], ['Publicado', 1], ['Concluído', 24]],
       'agentic-stack': [['Publicado', 5]],
       'marketing-squad': [['Ideia', 7], ['Aguardando aprovação', 2], ['Construindo', 5], ['Concluído', 5]],
-      dominiogame: [['Aguardando aprovação', 16], ['Fila', 3], ['Em andamento', 2], ['Concluído', 4]],
+      ai4all: [['Novo', 2], ['Aguardando aprovação', 4], ['Fila', 3], ['Em andamento', 2], ['Em teste', 1], ['Pronto para produção', 1], ['Concluído', 6]],
     };
     return { estado: 'ok', etapas: [], itens: (demo[game] ?? []).flatMap(([e, n]) => mk(e, n)) };
   }
