@@ -1,4 +1,4 @@
-# Copia publica do factory.yaml do repo marketing-squad (privado). A fonte e o factory.yaml la.
+# Vai na raiz do repo do projeto como factory.yaml. Configuracao, nao copia de dado.
 slug: marketing-squad
 nome: Marketing Squad
 repo: github.com/johncoelho/marketing-squad
@@ -11,14 +11,18 @@ equipe:
   principal: CMO
   validador-de-mercado: Hopkins
   copywriter: Ogilvy
+  diretor-de-arte: Bernbach
   gestor-de-trafego: Wanamaker
   analista-de-funil: Kaushik
   auditor-tecnico: Deming
+  sac: Gerber
 # Etapas do quadro em que cada papel atua (as issues desse papel = cartoes nessas etapas).
 etapas:
   principal: Ideia, Aguardando aprovação, Pronto (pausado), Concluído
   validador-de-mercado: Ideia, Validando, Aguardando aprovação
   copywriter: Construindo
+  diretor-de-arte: Construindo
   auditor-tecnico: Construindo, Pronto (pausado)
   gestor-de-trafego: Pronto (pausado), Rodando
   analista-de-funil: Rodando, Diagnóstico
+  sac: Rodando
